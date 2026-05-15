@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRM Vendas</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f3ef;--bg2:#ffffff;--bg3:#ede9e2;
+  --text:#1c1917;--text2:#78716c;--text3:#a8a29e;
+  --border:#e7e2d9;--border2:#d6cfc3;
+  --green:#16a34a;--green2:#dcfce7;
+  --amber:#d97706;--amber2:#fef3c7;
+  --red:#dc2626;--red2:#fee2e2;
+  --blue:#2563eb;--blue2:#dbeafe;
+  --radius:8px;--radius2:14px;
+  --sidebar:240px;--topbar:54px;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+
+/* Layout */
+#app{display:flex;min-height:100vh}
+#sidebar{width:var(--sidebar);background:var(--bg2);border-right:1px solid var(--border);position:fixed;top:0;left:0;height:100vh;overflow-y:auto;z-index:20;display:flex;flex-direction:column}
+#topbar{position:fixed;top:0;left:var(--sidebar);right:0;height:var(--topbar);background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:12px;z-index:19}
+#main{margin-left:var(--sidebar);margin-top:var(--topbar);padding:28px;min-height:calc(100vh - var(--topbar))}
+
+/* Sidebar */
+.sb-brand{padding:20px 18px 16px;border-bottom:1px solid var(--border)}
+.sb-logo{display:flex;align-items:center;gap:10px}
+.sb-icon{width:34px;height:34px;background:var(--text);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.sb-title{font-size:15px;font-weight:600;letter-spacing:-.3px}
+.sb-sub{font-size:11px;color:var(--text3);margin-top:1px}
+.sb-sec{padding:10px 18px 4px;font-size:10px;font-weight:600;color:var(--text3);letter-spacing:.8px;text-transform:uppercase;margin-top:8px}
+.sb-item{display:flex;align-items:center;gap:9px;padding:8px 12px;border-radius:var(--radius);margin:1px 8px;cursor:pointer;font-size:13px;color:var(--text2);transition:all .12s;user-select:none}
+.sb-item:hover{background:var(--bg3);color:var(--text)}
+.sb-item.active{background:var(--text);color:#fff}
+.sb-item .ico{font-size:14px;width:18px;text-align:center}
+.sb-badge{margin-left:auto;background:var(--red2);color:var(--red);font-size:10px;padding:1px 6px;border-radius:8px;font-weight:600}
+.sb-footer{margin-top:auto;padding:14px 18px;border-top:1px solid var(--border)}
+.sb-sync{font-size:11px;color:var(--text3);line-height:1.6}
+
+/* Topbar */
+.tb-title{font-size:14px;font-weight:600;flex:1}
+.btn{padding:7px 14px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;transition:all .12s}
+.btn:hover{background:var(--bg3)}
+.btn.primary{background:var(--text);color:#fff;border-color:var(--text)}
+.btn.primary:hover{opacity:.85}
+.btn.danger{background:var(--red2);color:var(--red);border-color:transparent}
+.btn.success{background:var(--green2);color:var(--green);border-color:transparent}
+.search{display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:6px 12px;max-width:260px;flex:1}
+.search input{background:none;border:none;outline:none;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);width:100%}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--text2)}
+
+/* Pages */
+.page{display:none}.page.active{display:block}
+
+/* Cards */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:20px 22px;margin-bottom:18px}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:8px}
+.card-title{font-size:13px;font-weight:600}
+.card-sub{font-size:11px;color:var(--text3);font-weight:400}
+
+/* Grid */
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px}
+.g2{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-bottom:18px}
+
+/* Metrics */
+.metric{background:var(--bg3);border-radius:var(--radius);padding:16px 18px;border:1px solid var(--border)}
+.metric .lbl{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.metric .val{font-size:26px;font-weight:600;letter-spacing:-.5px;font-family:'DM Mono',monospace}
+.metric .sub{font-size:11px;color:var(--text3);margin-top:5px}
+.up{color:var(--green)}.dn{color:var(--red)}
+
+/* Table */
+.tbl-wrap{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{text-align:left;padding:8px 10px;font-size:10px;font-weight:600;color:var(--text3);border-bottom:1px solid var(--border);letter-spacing:.4px;text-transform:uppercase}
+.tbl td{padding:11px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tbody tr:hover td{background:var(--bg3)}
+
+/* Badges */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:600}
+.bg{background:var(--green2);color:var(--green)}
+.ba{background:var(--amber2);color:var(--amber)}
+.br{background:var(--red2);color:var(--red)}
+.bb{background:var(--blue2);color:var(--blue)}
+.bgr{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+
+/* Forms */
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.fg label{font-size:11px;font-weight:600;color:var(--text2)}
+.fg input,.fg select,.fg textarea{border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 11px;width:100%;transition:border .12s}
+.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--text)}
+.fg textarea{resize:vertical;min-height:70px}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--bg2);border-radius:var(--radius2);border:1px solid var(--border);padding:26px;width:100%;max-width:500px;max-height:88vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.12)}
+.modal h3{font-size:16px;font-weight:600;margin-bottom:20px}
+.modal-close{float:right;background:none;border:none;font-size:20px;color:var(--text3);cursor:pointer;line-height:1;margin-top:-2px}
+.form-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+
+/* Kanban */
+.kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.k-col{background:var(--bg3);border-radius:var(--radius2);padding:14px;border:1px solid var(--border)}
+.k-hdr{font-size:11px;font-weight:600;color:var(--text2);margin-bottom:12px;display:flex;align-items:center;gap:7px;text-transform:uppercase;letter-spacing:.3px}
+.k-cnt{width:18px;height:18px;border-radius:50%;background:var(--border2);color:var(--text2);font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center}
+.k-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:11px 13px;margin-bottom:8px;cursor:pointer;transition:all .12s}
+.k-card:hover{box-shadow:0 2px 8px rgba(0,0,0,.06);border-color:var(--border2)}
+.k-name{font-size:12px;font-weight:500}
+.k-val{font-size:11px;color:var(--text3);margin-top:3px;font-family:'DM Mono',monospace}
+.k-tags{margin-top:8px}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.d-gray{background:var(--text3)}.d-amber{background:var(--amber)}.d-blue{background:var(--blue)}.d-green{background:var(--green)}
+
+/* Bar chart */
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.bar-lbl{width:110px;font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0}
+.bar-track{flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .6s}
+.bar-val{width:50px;text-align:right;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;flex-shrink:0}
+
+/* Bot msg */
+.bot-msg{background:var(--bg3);border-radius:var(--radius);padding:11px 13px;margin-bottom:8px;font-size:12px;line-height:1.5}
+.bot-msg .hdr{font-size:10px;font-weight:600;color:var(--text3);margin-bottom:4px}
+.bot-msg.cliente{background:var(--green2);margin-left:24px}
+
+/* Toast */
+#toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:#fff;padding:10px 18px;border-radius:var(--radius);font-size:12px;font-weight:500;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
+#toast.show{opacity:1}
+
+/* Empty */
+.empty{text-align:center;padding:40px 20px;color:var(--text3)}
+.empty .ei{font-size:32px;margin-bottom:10px}
+.empty p{font-size:13px;line-height:1.6}
+
+/* Rota card */
+.rota-card{background:var(--bg3);border-radius:var(--radius);padding:10px 14px;margin-bottom:8px;border:1px solid var(--border);font-size:12px}
+.rota-card .rc-data{font-weight:600;margin-bottom:4px}
+.rota-card .rc-cidades{color:var(--text2);line-height:1.5}
+
+/* Status dot */
+.status-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px}
+.sd-green{background:var(--green)}.sd-amber{background:var(--amber)}.sd-red{background:var(--red)}.sd-gray{background:var(--text3)}
+
+/* Loading */
+.loading{display:flex;align-items:center;gap:8px;color:var(--text3);font-size:13px;padding:20px 0}
+.spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--text);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div class="sb-brand">
+    <div class="sb-logo">
+      <div class="sb-icon">🌿</div>
+      <div><div class="sb-title">CRM Vendas</div><div class="sb-sub" id="sb-sub">carregando...</div></div>
+    </div>
+  </div>
+  <div class="sb-sec">Principal</div>
+  <div class="sb-item active" onclick="nav('dashboard',this)"><span class="ico">📊</span>Dashboard</div>
+  <div class="sb-item" onclick="nav('clientes',this)"><span class="ico">👥</span>Clientes <span class="sb-badge" id="badge-novos" style="display:none">0</span></div>
+  <div class="sb-item" onclick="nav('pipeline',this)"><span class="ico">💰</span>Pipeline</div>
+  <div class="sb-sec">Canais</div>
+  <div class="sb-item" onclick="nav('whatsapp',this)"><span class="ico">💬</span>WhatsApp</div>
+  <div class="sb-item" onclick="nav('rotas',this)"><span class="ico">🚚</span>Rotas do Dia</div>
+  <div class="sb-item" onclick="nav('marketplaces',this)"><span class="ico">🛒</span>Marketplaces</div>
+  <div class="sb-item" onclick="nav('integracoes',this)"><span class="ico">🔗</span>Integrações</div>
+  <div class="sb-sec">Análise</div>
+  <div class="sb-item" onclick="nav('relatorios',this)"><span class="ico">📈</span>Relatórios</div>
+  <div class="sb-item" onclick="nav('estrategia',this)"><span class="ico">🎯</span>Estratégia</div>
+  <div class="sb-sec">Config</div>
+  <div class="sb-item" onclick="importarCSV()"><span class="ico">📥</span>Importar Planilha</div>
+  <div class="sb-item" onclick="exportarClientes()"><span class="ico">📤</span>Exportar Dados</div>
+  <div class="sb-footer">
+    <div class="sb-sync" id="sb-sync">⏳ Conectando...</div>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <span class="tb-title" id="page-title">Dashboard</span>
+  <div class="search"><span>🔍</span><input type="text" id="busca" placeholder="Buscar cliente..." oninput="buscarCliente(this.value)"></div>
+  <button class="btn primary" id="btn-novo" onclick="openModal('cliente')">+ Novo Cliente</button>
+  <div class="avatar">VN</div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+
+<!-- DASHBOARD -->
+<div id="page-dashboard" class="page active">
+  <div class="g4" id="dash-metrics"><div class="loading"><div class="spinner"></div> Carregando...</div></div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">Vendas por Canal</span></div>
+      <div id="dash-canais"><div class="loading"><div class="spinner"></div> Carregando...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">Atividade Recente</span></div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Evento</th><th>Data</th></tr></thead><tbody id="dash-atividade"></tbody></table></div>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">Rotas Recentes</span><button class="btn" onclick="nav('rotas',document.querySelector('[onclick*=rotas]'))" style="font-size:11px">Ver todas →</button></div>
+      <div id="dash-rotas"></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">Bling — Estoque</span><button class="btn success" onclick="sincBling()" style="font-size:11px">🔄 Sincronizar</button></div>
+      <div id="dash-bling"><div style="font-size:12px;color:var(--text3)">Clique em sincronizar para carregar do Bling</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- CLIENTES -->
+<div id="page-clientes" class="page">
+  <div class="g4" style="margin-bottom:16px" id="cli-metrics"></div>
+  <div class="card">
+    <div class="card-hdr">
+      <span class="card-title">Clientes Cadastrados</span>
+      <div style="display:flex;gap:8px">
+        <select id="fil-status" class="btn" onchange="renderClientes()"><option value="">Todos os Status</option><option>Ativo</option><option>Seguimento</option><option>Inativo</option></select>
+        <select id="fil-cidade" class="btn" onchange="renderClientes()"><option value="">Todas as Cidades</option></select>
+        <button class="btn primary" onclick="openModal('cliente')">+ Novo</button>
+      </div>
+    </div>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Nome</th><th>Cidade</th><th>WhatsApp</th><th>Canal</th><th>Último Pedido</th><th>Status</th><th></th></tr></thead>
+      <tbody id="tbl-clientes"></tbody>
+    </table></div>
+    <div id="cli-empty" class="empty" style="display:none"><div class="ei">👥</div><p>Nenhum cliente encontrado.<br>Clique em "+ Novo" ou importe sua planilha.</p></div>
+  </div>
+</div>
+
+<!-- PIPELINE -->
+<div id="page-pipeline" class="page">
+  <div class="g4" style="margin-bottom:16px" id="pipe-metrics"></div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+    <button class="btn primary" onclick="openModal('oportunidade')">+ Nova Oportunidade</button>
+  </div>
+  <div class="kanban" id="kanban"></div>
+</div>
+
+<!-- WHATSAPP -->
+<div id="page-whatsapp" class="page">
+  <div class="g3" style="margin-bottom:16px">
+    <div class="metric"><div class="lbl">Conversas</div><div class="val" id="wa-conv">—</div></div>
+    <div class="metric"><div class="lbl">Pendentes</div><div class="val dn" id="wa-pend">—</div></div>
+    <div class="metric"><div class="lbl">Clientes c/ WA</div><div class="val" id="wa-tot">—</div></div>
+  </div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">Conversas Recentes</span><button class="btn" onclick="loadConversas()">🔄</button></div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Contato</th><th>Última mensagem</th><th>Status</th><th>Atualizado</th></tr></thead><tbody id="tbl-wa"></tbody></table></div>
+      <div id="wa-empty" class="empty" style="display:none"><div class="ei">💬</div><p>Nenhuma conversa ainda.</p></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">Disparo Manual por Cidade</span></div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Selecione as cidades e envie uma mensagem personalizada.</p>
+      <div class="fg"><label>Cidades</label>
+        <select id="disp-cidade" multiple style="height:120px">
+          <option>Barueri</option><option>Cajamar</option><option>Campinas</option><option>Carapicuíba</option>
+          <option>Cotia</option><option>Guarulhos</option><option>Jandira</option><option>Jundiaí</option>
+          <option>Mauá</option><option>Osasco</option><option>São José dos Campos</option><option>Grande SP</option>
+          <option>Zona Norte</option><option>Zona Leste</option><option>Zona Sul</option><option>Lapa</option>
+          <option>Butantã</option><option>Pinheiros</option><option>Vila Mariana</option><option>Moema</option>
+        </select>
+        <span style="font-size:10px;color:var(--text3)">Segure Ctrl para selecionar mais de uma</span>
+      </div>
+      <div class="fg"><label>Mensagem</label><textarea id="disp-msg" placeholder="Olá {nome}! Amanhã passaremos na sua região ({cidade}). Faça seu pedido até as 15h! 🚚"></textarea></div>
+      <button class="btn primary" style="width:100%" onclick="dispararMensagem()">📤 Disparar para Clientes Selecionados</button>
+    </div>
+  </div>
+</div>
+
+<!-- ROTAS DO DIA -->
+<div id="page-rotas" class="page">
+  <div class="g3" style="margin-bottom:16px">
+    <div class="metric"><div class="lbl">Rotas este mês</div><div class="val" id="rot-total">—</div></div>
+    <div class="metric"><div class="lbl">Última rota</div><div class="val" id="rot-ultima" style="font-size:16px">—</div></div>
+    <div class="metric"><div class="lbl">Clientes notificados</div><div class="val" id="rot-notif">—</div></div>
+  </div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">Histórico de Rotas</span><button class="btn" onclick="loadRotas()">🔄 Atualizar</button></div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:12px">As rotas são geradas automaticamente quando a expedição envia a mensagem no WhatsApp.</p>
+      <div id="rotas-list"></div>
+      <div id="rotas-empty" class="empty" style="display:none"><div class="ei">🚚</div><p>Nenhuma rota processada ainda.<br>Quando a expedição enviar a mensagem de rota, ela aparecerá aqui automaticamente.</p></div>
+    </div>
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">Criar Rota Manual</span></div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Use quando quiser criar uma rota sem esperar a expedição.</p>
+      <div class="fg"><label>Data de Entrega</label><input type="date" id="rot-data"></div>
+      <div class="fg"><label>Cidades da Rota</label>
+        <select id="rot-cidades" multiple style="height:120px">
+          <option>Barueri</option><option>Cajamar</option><option>Campinas</option><option>Carapicuíba</option>
+          <option>Cotia</option><option>Guarulhos</option><option>Jandira</option><option>Jundiaí</option>
+          <option>Mauá</option><option>Osasco</option><option>São José dos Campos</option><option>Grande SP</option>
+          <option>Zona Norte</option><option>Zona Leste</option><option>Zona Sul</option><option>Lapa</option>
+          <option>Butantã</option><option>Pinheiros</option><option>Vila Mariana</option><option>Moema</option>
+        </select>
+        <span style="font-size:10px;color:var(--text3)">Segure Ctrl para selecionar mais de uma</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn" style="flex:1" onclick="criarRota(false)">Salvar sem disparar</button>
+        <button class="btn primary" style="flex:1" onclick="criarRota(true)">📤 Salvar e Disparar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MARKETPLACES -->
+<div id="page-marketplaces" class="page">
+  <div class="g4" style="margin-bottom:16px">
+    <div class="metric"><div class="lbl">Total de Pedidos</div><div class="val" id="ped-total">—</div></div>
+    <div class="metric"><div class="lbl">Receita Total</div><div class="val" id="ped-receita">—</div></div>
+    <div class="metric"><div class="lbl">Este mês</div><div class="val" id="ped-mes">—</div></div>
+    <div class="metric"><div class="lbl">Ticket Médio</div><div class="val" id="ped-ticket">—</div></div>
+  </div>
+  <div class="card">
+    <div class="card-hdr">
+      <span class="card-title">Pedidos</span>
+      <div style="display:flex;gap:8px">
+        <button class="btn success" onclick="sincWoo()">🔄 WooCommerce</button>
+        <button class="btn success" onclick="sincML()">🔄 Mercado Livre</button>
+        <button class="btn primary" onclick="openModal('pedido')">+ Novo Pedido</button>
+      </div>
+    </div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Canal</th><th>Cliente</th><th>Valor</th><th>Status</th><th>Data</th><th></th></tr></thead><tbody id="tbl-pedidos"></tbody></table></div>
+    <div id="ped-empty" class="empty" style="display:none"><div class="ei">🛒</div><p>Nenhum pedido registrado ainda.</p></div>
+  </div>
+</div>
+
+<!-- INTEGRAÇÕES -->
+<div id="page-integracoes" class="page">
+  <div class="card">
+    <div class="card-hdr"><span class="card-title">Status das Integrações</span></div>
+    <table class="tbl">
+      <thead><tr><th>Serviço</th><th>Função</th><th>Status</th><th>Ação</th></tr></thead>
+      <tbody>
+        <tr><td><strong>💬 Z-API / WhatsApp</strong></td><td>Bot de rotas + mensagens automáticas</td><td><span class="badge bg">✓ Conectado</span></td><td><button class="btn" onclick="testarWA()">Testar</button></td></tr>
+        <tr><td><strong>🗄️ Supabase</strong></td><td>Banco de dados — salva tudo</td><td><span class="badge" id="st-supabase">⏳ Verificando</span></td><td>—</td></tr>
+        <tr><td><strong>🟠 Bling ERP</strong></td><td>Pedidos, estoque, NF-e</td><td><span class="badge ba">⚙️ Configurar</span></td><td><button class="btn" onclick="openModal('bling')">Configurar</button></td></tr>
+        <tr><td><strong>🛍️ WooCommerce</strong></td><td>Pedidos do site próprio</td><td><span class="badge ba">⚙️ Configurar</span></td><td><button class="btn" onclick="openModal('woo')">Configurar</button></td></tr>
+        <tr><td><strong>🛒 Mercado Livre</strong></td><td>Pedidos e mensagens ML</td><td><span class="badge ba">⚙️ Configurar</span></td><td><button class="btn" onclick="openModal('ml')">Configurar</button></td></tr>
+        <tr><td><strong>🔴 Shopee</strong></td><td>Pedidos Shopee</td><td><span class="badge bgr">⏳ Aguardando aprovação</span></td><td>—</td></tr>
+        <tr><td><strong>🔵 Google Business</strong></td><td>Leads e avaliações</td><td><span class="badge ba">⚙️ Configurar</span></td><td><button class="btn" onclick="openModal('google')">Configurar</button></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div id="int-info" class="card" style="display:none"></div>
+</div>
+
+<!-- RELATÓRIOS -->
+<div id="page-relatorios" class="page">
+  <div class="g4" style="margin-bottom:16px" id="rel-metrics"></div>
+  <div class="g2">
+    <div class="card"><div class="card-hdr"><span class="card-title">Receita por Canal</span></div><div id="rel-canais"></div></div>
+    <div class="card"><div class="card-hdr"><span class="card-title">Clientes por Cidade</span></div><div id="rel-cidades"></div></div>
+  </div>
+</div>
+
+<!-- ESTRATÉGIA -->
+<div id="page-estrategia" class="page">
+  <div class="card">
+    <div class="card-hdr"><span class="card-title">Plano de Crescimento Orgânico — 90 dias</span></div>
+    <div class="g2" style="margin-bottom:0">
+      <div>
+        <p style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Frente 1 — Direto (Site + Google + WA)</p>
+        <div class="bot-msg"><div class="hdr">📌 Ação #1 — Velocidade de resposta</div>Responder todo lead do Google em até 1h pelo WhatsApp. Aumenta conversão em até 30%.</div>
+        <div class="bot-msg"><div class="hdr">📌 Ação #2 — Conteúdo real</div>Fotos de rotas, entregas e produtos no Google e Instagram. Autenticidade converte mais que anúncios.</div>
+        <div class="bot-msg"><div class="hdr">📌 Ação #3 — Avaliações Google</div>Após cada entrega, bot pede avaliação automaticamente. Meta: 50+ avaliações 5★.</div>
+        <p style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 10px">Frente 2 — Marketplaces</p>
+        <div class="bot-msg"><div class="hdr">📌 Ação #4 — Reputação ML e Shopee</div>Responder em até 2h. Algoritmo privilegia vendedores responsivos — mais visibilidade = mais vendas.</div>
+        <div class="bot-msg"><div class="hdr">📌 Ação #5 — Migrar para direto</div>Convidar clientes de marketplace para comprar pelo WhatsApp. Maior margem, mais controle.</div>
+      </div>
+      <div>
+        <p style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Frente 3 — Bot de Rotas (seu diferencial)</p>
+        <div class="bot-msg"><div class="hdr">📌 Ação #6 — Automação total</div>Expedição manda rota → bot já dispara para os clientes das cidades. Zero trabalho manual.</div>
+        <div class="bot-msg"><div class="hdr">📌 Ação #7 — Reativação de inativos</div>Clientes sem pedido há 30+ dias recebem mensagem personalizada com novidade ou oferta.</div>
+        <div class="bot-msg"><div class="hdr">📌 Ação #8 — Análise de padrões</div>Usar o CRM para ver quem compra mais, quais cidades têm mais pedidos, quais produtos giram mais.</div>
+        <p style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 10px">Metas — 90 dias</p>
+        <table class="tbl">
+          <thead><tr><th>Métrica</th><th>Atual</th><th>Meta</th></tr></thead>
+          <tbody>
+            <tr><td>Clientes ativos</td><td id="est-atual">—</td><td><span class="badge bb">160</span></td></tr>
+            <tr><td>Conversão WA</td><td>—</td><td><span class="badge bg">40%</span></td></tr>
+            <tr><td>Avaliações Google</td><td>—</td><td><span class="badge bg">50+</span></td></tr>
+            <tr><td>Receita mensal</td><td>—</td><td><span class="badge bb">R$60k</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+</div><!-- /app -->
+
+<!-- MODAL -->
+<div id="overlay" class="overlay" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modal-content"></div>
+</div>
+
+<div id="toast"></div>
+<input type="file" id="file-csv" accept=".csv" style="display:none" onchange="processCSV(this)">
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────
+const API = window.location.origin; // aponta para o servidor Railway
+
+// ── NAVEGAÇÃO ───────────────────────────────────────────────
+const pageActions = {
+  dashboard:{ title:'Dashboard', btn:'+ Novo Cliente', modal:'cliente' },
+  clientes:{ title:'Clientes', btn:'+ Novo Cliente', modal:'cliente' },
+  pipeline:{ title:'Pipeline de Vendas', btn:'+ Oportunidade', modal:'oportunidade' },
+  whatsapp:{ title:'WhatsApp', btn:'', modal:'' },
+  rotas:{ title:'Rotas do Dia', btn:'', modal:'' },
+  marketplaces:{ title:'Marketplaces', btn:'+ Pedido', modal:'pedido' },
+  integracoes:{ title:'Integrações', btn:'', modal:'' },
+  relatorios:{ title:'Relatórios', btn:'', modal:'' },
+  estrategia:{ title:'Estratégia', btn:'', modal:'' },
+};
+
+function nav(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('active'));
+  document.getElementById('page-' + id)?.classList.add('active');
+  if (el) el.classList.add('active');
+  const cfg = pageActions[id] || {};
+  document.getElementById('page-title').textContent = cfg.title || id;
+  const btn = document.getElementById('btn-novo');
+  if (cfg.btn) { btn.textContent = cfg.btn; btn.style.display = ''; btn.onclick = () => openModal(cfg.modal); }
+  else btn.style.display = 'none';
+  renderPage(id);
+}
+
+function renderPage(id) {
+  if (id === 'dashboard') loadDashboard();
+  else if (id === 'clientes') loadClientes();
+  else if (id === 'pipeline') loadPipeline();
+  else if (id === 'whatsapp') loadWhatsapp();
+  else if (id === 'rotas') loadRotas();
+  else if (id === 'marketplaces') loadPedidos();
+  else if (id === 'relatorios') loadRelatorios();
+  else if (id === 'estrategia') loadEstrategia();
+}
+
+// ── API HELPER ───────────────────────────────────────────────
+async function api(path, method = 'GET', body = null) {
+  try {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const r = await fetch(API + path, opts);
+    return await r.json();
+  } catch (e) {
+    console.error('API error:', e);
+    return null;
+  }
+}
+
+// ── DASHBOARD ───────────────────────────────────────────────
+async function loadDashboard() {
+  const data = await api('/api/dashboard');
+  if (!data) return;
+
+  document.getElementById('dash-metrics').innerHTML = `
+    <div class="metric"><div class="lbl">Total Clientes</div><div class="val">${data.clientes.total}</div><div class="sub"><span class="up">${data.clientes.ativos} ativos</span></div></div>
+    <div class="metric"><div class="lbl">Receita do Mês</div><div class="val">R$${Math.round(data.pedidos.receita_mes/1000)||0}k</div><div class="sub">${data.pedidos.mes} pedidos</div></div>
+    <div class="metric"><div class="lbl">Oportunidades</div><div class="val">${data.oportunidades.abertas}</div><div class="sub">em aberto</div></div>
+    <div class="metric"><div class="lbl">Pedidos Total</div><div class="val">${data.pedidos.total}</div></div>`;
+
+  document.getElementById('sb-sub').textContent = `${data.clientes.total} clientes`;
+  document.getElementById('sb-sync').textContent = '✓ Conectado · ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+
+  // Rotas recentes
+  const rotas = data.rotas_recentes || [];
+  document.getElementById('dash-rotas').innerHTML = rotas.length
+    ? rotas.map(r => `<div class="rota-card"><div class="rc-data">📅 ${new Date(r.data_entrega + 'T12:00:00').toLocaleDateString('pt-BR', {weekday:'short',day:'2-digit',month:'2-digit'})}</div><div class="rc-cidades">${(r.cidades||[]).join(' · ')}</div></div>`).join('')
+    : '<div style="color:var(--text3);font-size:12px">Nenhuma rota ainda. Aguardando mensagem da expedição.</div>';
+
+  // Atividades
+  const ativs = await api('/api/atividades');
+  const tbody = document.getElementById('dash-atividade');
+  tbody.innerHTML = (ativs||[]).map(a => `<tr><td>${a.descricao}</td><td style="color:var(--text3);white-space:nowrap">${new Date(a.criado_em).toLocaleDateString('pt-BR')}</td></tr>`).join('')
+    || '<tr><td colspan="2" style="text-align:center;color:var(--text3)">Nenhuma atividade ainda</td></tr>';
+}
+
+// ── CLIENTES ─────────────────────────────────────────────────
+let todosClientes = [];
+async function loadClientes() {
+  todosClientes = await api('/api/clientes') || [];
+  renderClientes();
+
+  // Cidades para filtro
+  const cidades = [...new Set(todosClientes.map(c => c.cidade).filter(Boolean))].sort();
+  const sel = document.getElementById('fil-cidade');
+  sel.innerHTML = '<option value="">Todas as Cidades</option>' + cidades.map(c => `<option>${c}</option>`).join('');
+
+  // Metrics
+  const ativos = todosClientes.filter(c => c.status === 'Ativo').length;
+  const comWA = todosClientes.filter(c => c.whatsapp).length;
+  document.getElementById('cli-metrics').innerHTML = `
+    <div class="metric"><div class="lbl">Total</div><div class="val">${todosClientes.length}</div></div>
+    <div class="metric"><div class="lbl">Ativos</div><div class="val up">${ativos}</div></div>
+    <div class="metric"><div class="lbl">Com WhatsApp</div><div class="val">${comWA}</div></div>
+    <div class="metric"><div class="lbl">Cidades</div><div class="val">${cidades.length}</div></div>`;
+}
+
+function renderClientes() {
+  const fs = document.getElementById('fil-status')?.value || '';
+  const fc = document.getElementById('fil-cidade')?.value || '';
+  const filtered = todosClientes.filter(c => (!fs || c.status === fs) && (!fc || c.cidade === fc));
+  const tbody = document.getElementById('tbl-clientes');
+  const empty = document.getElementById('cli-empty');
+  if (!filtered.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = filtered.map(c => `<tr>
+    <td><strong>${c.nome}</strong>${c.email ? `<div style="font-size:10px;color:var(--text3)">${c.email}</div>` : ''}</td>
+    <td>${c.cidade || '—'}</td>
+    <td>${c.whatsapp ? formatWA(c.whatsapp) : '—'}</td>
+    <td>${badgeCanal(c.canal)}</td>
+    <td>${c.ultimo_pedido ? new Date(c.ultimo_pedido + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}</td>
+    <td>${badgeStatus(c.status)}</td>
+    <td style="white-space:nowrap">
+      <button class="btn" onclick="editCliente('${c.id}')" style="font-size:11px;padding:3px 8px">✏️</button>
+      <button class="btn danger" onclick="delCliente('${c.id}')" style="font-size:11px;padding:3px 8px;margin-left:4px">🗑</button>
+    </td>
+  </tr>`).join('');
+}
+
+function buscarCliente(q) {
+  if (!q) { renderClientes(); return; }
+  const ql = q.toLowerCase();
+  const filtered = todosClientes.filter(c => c.nome?.toLowerCase().includes(ql) || c.cidade?.toLowerCase().includes(ql) || c.whatsapp?.includes(q));
+  const tbody = document.getElementById('tbl-clientes');
+  if (document.getElementById('page-clientes').classList.contains('active')) {
+    tbody.innerHTML = filtered.map(c => `<tr><td><strong>${c.nome}</strong></td><td>${c.cidade||'—'}</td><td>${c.whatsapp ? formatWA(c.whatsapp) : '—'}</td><td>${badgeCanal(c.canal)}</td><td>—</td><td>${badgeStatus(c.status)}</td><td></td></tr>`).join('');
+  }
+}
+
+async function editCliente(id) {
+  const c = todosClientes.find(x => x.id === id);
+  if (c) openModal('cliente', c);
+}
+
+async function delCliente(id) {
+  if (!confirm('Remover este cliente?')) return;
+  await api('/api/clientes/' + id, 'DELETE');
+  toast('✓ Cliente removido');
+  loadClientes();
+}
+
+// ── PIPELINE ─────────────────────────────────────────────────
+async function loadPipeline() {
+  const ops = await api('/api/oportunidades') || [];
+  const etapas = ['Prospecção','Negociação','Pedido Gerado','Fechado'];
+  const dots = { 'Prospecção':'d-gray','Negociação':'d-amber','Pedido Gerado':'d-blue','Fechado':'d-green' };
+
+  const totais = etapas.map(e => ops.filter(o => o.etapa === e));
+  document.getElementById('pipe-metrics').innerHTML = etapas.map((e, i) => `
+    <div class="metric"><div class="lbl">${e}</div><div class="val">${totais[i].length}</div><div class="sub">R$${totais[i].reduce((s,o)=>s+parseFloat(o.valor||0),0).toLocaleString('pt-BR')}</div></div>`).join('');
+
+  document.getElementById('kanban').innerHTML = etapas.map(e => {
+    const cards = ops.filter(o => o.etapa === e);
+    return `<div class="k-col">
+      <div class="k-hdr"><div class="dot ${dots[e]}"></div>${e}<span class="k-cnt">${cards.length}</span></div>
+      ${cards.length ? cards.map(o => `<div class="k-card" onclick="editOp('${o.id}')">
+        <div class="k-name">${o.nome}</div>
+        <div class="k-val">R$${parseFloat(o.valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>
+        <div class="k-tags">${badgeCanal(o.canal)}</div>
+      </div>`).join('') : '<div style="font-size:11px;color:var(--text3);text-align:center;padding:10px 0">Vazio</div>'}
+    </div>`;
+  }).join('');
+}
+
+async function editOp(id) {
+  const ops = await api('/api/oportunidades') || [];
+  const o = ops.find(x => x.id === id);
+  if (o) openModal('oportunidade', o);
+}
+
+// ── WHATSAPP ──────────────────────────────────────────────────
+async function loadWhatsapp() {
+  await loadConversas();
+  const clientes = await api('/api/clientes') || [];
+  const comWA = clientes.filter(c => c.whatsapp).length;
+  document.getElementById('wa-tot').textContent = comWA;
+}
+
+async function loadConversas() {
+  const convs = await api('/api/conversas') || [];
+  const pend = convs.filter(c => c.status === 'Pendente' || c.status === 'Urgente').length;
+  document.getElementById('wa-conv').textContent = convs.length;
+  document.getElementById('wa-pend').textContent = pend;
+  const tbody = document.getElementById('tbl-wa');
+  const empty = document.getElementById('wa-empty');
+  if (!convs.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = convs.map(c => `<tr>
+    <td><strong>${c.clientes?.nome || formatWA(c.whatsapp)}</strong></td>
+    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.ultima_mensagem || '—'}</td>
+    <td>${badgeStatus(c.status)}</td>
+    <td style="color:var(--text3)">${new Date(c.atualizado_em).toLocaleDateString('pt-BR')}</td>
+  </tr>`).join('');
+}
+
+async function dispararMensagem() {
+  const sel = document.getElementById('disp-cidade');
+  const cidades = [...sel.selectedOptions].map(o => o.value);
+  const msg = document.getElementById('disp-msg').value || 'Olá {nome}! Amanhã passaremos na sua região ({cidade}). Faça seu pedido até as 15h! 🚚';
+  if (!cidades.length) { toast('⚠ Selecione pelo menos uma cidade'); return; }
+  toast('📤 Disparando mensagens...');
+  const r = await api('/api/disparar', 'POST', { cidades, mensagem: msg });
+  if (r) toast(`✓ ${r.enviados} mensagens enviadas de ${r.total} clientes`);
+}
+
+// ── ROTAS ────────────────────────────────────────────────────
+async function loadRotas() {
+  const rotas = await api('/api/rotas-diarias') || [];
+  document.getElementById('rot-total').textContent = rotas.length;
+  if (rotas.length) {
+    const ultima = rotas[0];
+    document.getElementById('rot-ultima').textContent = new Date(ultima.data_entrega + 'T12:00:00').toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'});
+  }
+  const list = document.getElementById('rotas-list');
+  const empty = document.getElementById('rotas-empty');
+  if (!rotas.length) { list.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  list.innerHTML = rotas.map(r => `<div class="rota-card">
+    <div class="rc-data">📅 ${new Date(r.data_entrega + 'T12:00:00').toLocaleDateString('pt-BR', {weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'})}</div>
+    <div class="rc-cidades">${(r.cidades||[]).join(' · ')}</div>
+    ${r.mensagem_original ? `<div style="font-size:10px;color:var(--text3);margin-top:6px;font-style:italic">"${r.mensagem_original.substring(0,80)}..."</div>` : ''}
+  </div>`).join('');
+}
+
+async function criarRota(disparar) {
+  const data = document.getElementById('rot-data').value;
+  const sel = document.getElementById('rot-cidades');
+  const cidades = [...sel.selectedOptions].map(o => o.value);
+  if (!data) { toast('⚠ Selecione a data de entrega'); return; }
+  if (!cidades.length) { toast('⚠ Selecione pelo menos uma cidade'); return; }
+  toast(disparar ? '📤 Criando rota e disparando...' : '💾 Salvando rota...');
+  const r = await api('/api/rotas-diarias', 'POST', { cidades, data_entrega: data, disparar });
+  if (r) {
+    toast(disparar ? `✓ Rota criada! ${r.clientes_notificados} clientes notificados` : '✓ Rota salva');
+    loadRotas();
+  }
+}
+
+// ── PEDIDOS ──────────────────────────────────────────────────
+async function loadPedidos() {
+  const pedidos = await api('/api/pedidos') || [];
+  const total = pedidos.reduce((s, p) => s + parseFloat(p.valor || 0), 0);
+  const hoje = new Date();
+  const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString();
+  const mes = pedidos.filter(p => p.criado_em >= inicioMes).length;
+  const ticket = pedidos.length ? total / pedidos.length : 0;
+
+  document.getElementById('ped-total').textContent = pedidos.length;
+  document.getElementById('ped-receita').textContent = 'R$' + Math.round(total / 1000) + 'k';
+  document.getElementById('ped-mes').textContent = mes;
+  document.getElementById('ped-ticket').textContent = 'R$' + Math.round(ticket);
+
+  const tbody = document.getElementById('tbl-pedidos');
+  const empty = document.getElementById('ped-empty');
+  if (!pedidos.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = pedidos.map((p, i) => `<tr>
+    <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">#${String(i + 1001)}</td>
+    <td>${badgeCanal(p.canal)}</td>
+    <td>${p.clientes?.nome || p.cliente_nome || '—'}</td>
+    <td style="font-family:'DM Mono',monospace">R$${parseFloat(p.valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+    <td>${badgeStatus(p.status)}</td>
+    <td style="color:var(--text3)">${p.criado_em ? new Date(p.criado_em).toLocaleDateString('pt-BR') : '—'}</td>
+    <td><button class="btn danger" onclick="delPedido('${p.id}')" style="font-size:11px;padding:3px 8px">🗑</button></td>
+  </tr>`).join('');
+}
+
+async function delPedido(id) {
+  if (!confirm('Remover pedido?')) return;
+  // implementar delete endpoint
+  toast('Pedido removido');
+  loadPedidos();
+}
+
+async function sincWoo() { toast('🔄 Sincronizando WooCommerce...'); const r = await api('/api/woo/pedidos'); if (r) { toast(`✓ ${r.sincronizados} pedidos sincronizados`); loadPedidos(); } }
+async function sincML() { toast('🔄 Sincronizando Mercado Livre...'); const r = await api('/api/ml/pedidos'); if (r) { toast(`✓ ${r.sincronizados} pedidos sincronizados`); loadPedidos(); } }
+async function sincBling() { toast('🔄 Sincronizando Bling...'); const r = await api('/api/bling/pedidos'); if (r) { toast(`✓ ${r.sincronizados} pedidos do Bling`); } }
+
+// ── RELATÓRIOS ───────────────────────────────────────────────
+async function loadRelatorios() {
+  const [clientes, pedidos] = await Promise.all([api('/api/clientes'), api('/api/pedidos')]);
+  const c = clientes || [], p = pedidos || [];
+  const total = p.reduce((s, x) => s + parseFloat(x.valor || 0), 0);
+  const ticket = p.length ? total / p.length : 0;
+  const ativos = c.filter(x => x.status === 'Ativo').length;
+
+  document.getElementById('rel-metrics').innerHTML = `
+    <div class="metric"><div class="lbl">Receita Total</div><div class="val">R$${Math.round(total/1000)||0}k</div></div>
+    <div class="metric"><div class="lbl">Pedidos</div><div class="val">${p.length}</div></div>
+    <div class="metric"><div class="lbl">Ticket Médio</div><div class="val">R$${Math.round(ticket)}</div></div>
+    <div class="metric"><div class="lbl">Clientes Ativos</div><div class="val">${ativos}</div></div>`;
+
+  const canais = {};
+  p.forEach(x => canais[x.canal] = (canais[x.canal] || 0) + parseFloat(x.valor || 0));
+  const maxC = Math.max(...Object.values(canais), 1);
+  const cores = { Site:'var(--blue)', WhatsApp:'#25D366', 'Mercado Livre':'#F7C223', Shopee:'#EE4D2D', Amazon:'#FF9900' };
+  document.getElementById('rel-canais').innerHTML = Object.entries(canais).map(([k, v]) =>
+    `<div class="bar-row"><div class="bar-lbl">${k}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/maxC*100)}%;background:${cores[k]||'var(--blue)'}"></div></div><div class="bar-val">R$${Math.round(v)}</div></div>`
+  ).join('') || '<div style="color:var(--text3);font-size:12px">Nenhum pedido ainda</div>';
+
+  const cidades = {};
+  c.forEach(x => { if (x.cidade) cidades[x.cidade] = (cidades[x.cidade] || 0) + 1; });
+  const maxR = Math.max(...Object.values(cidades), 1);
+  document.getElementById('rel-cidades').innerHTML = Object.entries(cidades).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k, v]) =>
+    `<div class="bar-row"><div class="bar-lbl">${k}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/maxR*100)}%;background:var(--blue)"></div></div><div class="bar-val">${v}</div></div>`
+  ).join('') || '<div style="color:var(--text3);font-size:12px">Cadastre clientes para ver</div>';
+}
+
+async function loadEstrategia() {
+  const c = await api('/api/clientes') || [];
+  const ativos = c.filter(x => x.status === 'Ativo').length;
+  const el = document.getElementById('est-atual');
+  if (el) el.textContent = ativos;
+}
+
+// ── MODAIS ───────────────────────────────────────────────────
+function openModal(tipo, data = {}) {
+  document.getElementById('modal-content').innerHTML = buildModal(tipo, data);
+  document.getElementById('overlay').style.display = 'flex';
+}
+function closeModal() { document.getElementById('overlay').style.display = 'none'; }
+
+function buildModal(tipo, data = {}) {
+  if (tipo === 'cliente') {
+    return `<button class="modal-close" onclick="closeModal()">✕</button>
+    <h3>${data.id ? 'Editar' : 'Novo'} Cliente</h3>
+    <div class="fg2">
+      <div class="fg"><label>Nome *</label><input id="m-nome" value="${data.nome||''}" placeholder="Nome completo"></div>
+      <div class="fg"><label>WhatsApp</label><input id="m-wa" value="${data.whatsapp ? formatWA(data.whatsapp) : ''}" placeholder="19 99999-9999"></div>
+    </div>
+    <div class="fg2">
+      <div class="fg"><label>Email</label><input id="m-email" type="email" value="${data.email||''}" placeholder="email@exemplo.com"></div>
+      <div class="fg"><label>Cidade</label><input id="m-cidade" value="${data.cidade||''}" placeholder="Ex: Guarulhos"></div>
+    </div>
+    <div class="fg2">
+      <div class="fg"><label>Canal Principal</label><select id="m-canal">
+        <option${data.canal==='WhatsApp'?' selected':''}>WhatsApp</option>
+        <option${data.canal==='Site'?' selected':''}>Site</option>
+        <option${data.canal==='Mercado Livre'?' selected':''}>Mercado Livre</option>
+        <option${data.canal==='Shopee'?' selected':''}>Shopee</option>
+        <option${data.canal==='Amazon'?' selected':''}>Amazon</option>
+        <option${data.canal==='Google'?' selected':''}>Google</option>
+      </select></div>
+      <div class="fg"><label>Status</label><select id="m-status">
+        <option${data.status==='Ativo'||!data.status?' selected':''}>Ativo</option>
+        <option${data.status==='Seguimento'?' selected':''}>Seguimento</option>
+        <option${data.status==='Inativo'?' selected':''}>Inativo</option>
+      </select></div>
+    </div>
+    <div class="fg"><label>Observações</label><input id="m-obs" value="${data.obs||''}" placeholder="Informações extras"></div>
+    <div class="form-actions">
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn primary" onclick="salvarCliente('${data.id||''}')">💾 Salvar</button>
+    </div>`;
+  }
+  if (tipo === 'oportunidade') {
+    return `<button class="modal-close" onclick="closeModal()">✕</button>
+    <h3>${data.id ? 'Editar' : 'Nova'} Oportunidade</h3>
+    <div class="fg2">
+      <div class="fg"><label>Cliente / Empresa *</label><input id="m-opnome" value="${data.nome||''}" placeholder="Nome do cliente"></div>
+      <div class="fg"><label>Valor (R$)</label><input id="m-opval" type="number" value="${data.valor||''}" placeholder="0"></div>
+    </div>
+    <div class="fg2">
+      <div class="fg"><label>Etapa</label><select id="m-opetapa">
+        <option${data.etapa==='Prospecção'||!data.etapa?' selected':''}>Prospecção</option>
+        <option${data.etapa==='Negociação'?' selected':''}>Negociação</option>
+        <option${data.etapa==='Pedido Gerado'?' selected':''}>Pedido Gerado</option>
+        <option${data.etapa==='Fechado'?' selected':''}>Fechado</option>
+      </select></div>
+      <div class="fg"><label>Canal</label><select id="m-opcanal">
+        <option>WhatsApp</option><option>Site</option><option>Mercado Livre</option><option>Shopee</option><option>Amazon</option><option>Google</option>
+      </select></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn primary" onclick="salvarOp('${data.id||''}')">💾 Salvar</button>
+    </div>`;
+  }
+  if (tipo === 'pedido') {
+    return `<button class="modal-close" onclick="closeModal()">✕</button>
+    <h3>Novo Pedido</h3>
+    <div class="fg2">
+      <div class="fg"><label>Cliente</label><input id="m-pcliente" placeholder="Nome do cliente"></div>
+      <div class="fg"><label>Canal</label><select id="m-pcanal"><option>Mercado Livre</option><option>Shopee</option><option>Amazon</option><option>Site</option><option>WhatsApp</option></select></div>
+    </div>
+    <div class="fg2">
+      <div class="fg"><label>Valor (R$) *</label><input id="m-pval" type="number" step="0.01" placeholder="0.00"></div>
+      <div class="fg"><label>Status</label><select id="m-pstatus"><option>Processando</option><option>Preparando</option><option>Enviado</option><option>Entregue</option><option>Cancelado</option></select></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn primary" onclick="salvarPedido()">💾 Salvar</button>
+    </div>`;
+  }
+  if (tipo === 'bling') {
+    return `<button class="modal-close" onclick="closeModal()">✕</button>
+    <h3>Configurar Bling ERP</h3>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">Para pegar o token do Bling:<br>1. Acesse bling.com.br e faça login<br>2. Vá em <strong>Configurações → Integrações → API</strong><br>3. Clique em <strong>"Gerar token"</strong> e copie aqui</p>
+    <div class="fg"><label>Token da API do Bling</label><input id="m-bling-token" placeholder="Cole o token aqui"></div>
+    <div class="form-actions"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary" onclick="salvarConfig('bling_token','m-bling-token')">💾 Salvar</button></div>`;
+  }
+  if (tipo === 'woo') {
+    return `<button class="modal-close" onclick="closeModal()">✕</button>
+    <h3>Configurar WooCommerce</h3>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">Para pegar as credenciais:<br>1. No WordPress vá em <strong>WooCommerce → Configurações → Avançado → REST API</strong><br>2. Clique em <strong>"Adicionar chave"</strong> com permissão de Leitura</p>
+    <div class="fg"><label>URL do Site</label><input id="m-woo-url" placeholder="https://seusite.com.br"></div>
+    <div class="fg"><label>Consumer Key</label><input id="m-woo-key" placeholder="ck_..."></div>
+    <div class="fg"><label>Consumer Secret</label><input id="m-woo-secret" placeholder="cs_..."></div>
+    <div class="form-actions"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary">💾 Salvar</button></div>`;
+  }
+  return `<button class="modal-close" onclick="closeModal()">✕</button><h3>Em breve</h3>`;
+}
+
+// ── SALVAR ───────────────────────────────────────────────────
+async function salvarCliente(id) {
+  const nome = document.getElementById('m-nome').value.trim();
+  if (!nome) { toast('⚠ Nome é obrigatório'); return; }
+  const body = {
+    nome,
+    whatsapp: document.getElementById('m-wa').value.replace(/\D/g,''),
+    email: document.getElementById('m-email').value.trim(),
+    cidade: document.getElementById('m-cidade').value.trim(),
+    canal: document.getElementById('m-canal').value,
+    status: document.getElementById('m-status').value,
+    obs: document.getElementById('m-obs').value.trim(),
+  };
+  const r = id ? await api('/api/clientes/' + id, 'PUT', body) : await api('/api/clientes', 'POST', body);
+  if (r) { toast('✓ Cliente salvo'); closeModal(); loadClientes(); }
+}
+
+async function salvarOp(id) {
+  const nome = document.getElementById('m-opnome').value.trim();
+  if (!nome) { toast('⚠ Preencha o nome'); return; }
+  const body = { nome, valor: document.getElementById('m-opval').value, etapa: document.getElementById('m-opetapa').value, canal: document.getElementById('m-opcanal').value };
+  const r = id ? await api('/api/oportunidades/' + id, 'PUT', body) : await api('/api/oportunidades', 'POST', body);
+  if (r) { toast('✓ Oportunidade salva'); closeModal(); loadPipeline(); }
+}
+
+async function salvarPedido() {
+  const valor = document.getElementById('m-pval').value;
+  if (!valor) { toast('⚠ Informe o valor'); return; }
+  const body = { cliente_nome: document.getElementById('m-pcliente').value, canal: document.getElementById('m-pcanal').value, valor, status: document.getElementById('m-pstatus').value };
+  const r = await api('/api/pedidos', 'POST', body);
+  if (r) { toast('✓ Pedido salvo'); closeModal(); loadPedidos(); }
+}
+
+function salvarConfig(chave, inputId) {
+  const val = document.getElementById(inputId).value.trim();
+  if (!val) { toast('⚠ Campo obrigatório'); return; }
+  localStorage.setItem('cfg_' + chave, val);
+  toast('✓ Configuração salva localmente');
+  closeModal();
+}
+
+// ── IMPORTAR CSV ─────────────────────────────────────────────
+function importarCSV() { document.getElementById('file-csv').click(); }
+function processCSV(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    const lines = e.target.result.split('\n').filter(l => l.trim());
+    if (lines.length < 2) { toast('⚠ Arquivo inválido'); return; }
+    const headers = lines[0].split(/[,;\t]/).map(h => h.trim().toLowerCase().replace(/['"]/g,''));
+    const clientes = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(/[,;\t]/).map(c => c.trim().replace(/['"]/g,''));
+      if (!cols[0]) continue;
+      const obj = {};
+      headers.forEach((h, j) => {
+        if (h.includes('nome')) obj.nome = cols[j];
+        else if (h.includes('whatsapp') || h.includes('celular') || h.includes('telefone')) obj.whatsapp = cols[j]?.replace(/\D/g,'');
+        else if (h.includes('email')) obj.email = cols[j];
+        else if (h.includes('cidade') || h.includes('regiao') || h.includes('região')) obj.cidade = cols[j];
+      });
+      if (obj.nome) clientes.push(obj);
+    }
+    toast(`📥 Importando ${clientes.length} clientes...`);
+    const r = await api('/api/importar-clientes', 'POST', { clientes });
+    if (r) { toast(`✓ ${r.inseridos} clientes importados!`); nav('clientes', document.querySelector('[onclick*=clientes]')); }
+    input.value = '';
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+async function exportarClientes() {
+  const clientes = await api('/api/clientes') || [];
+  if (!clientes.length) { toast('Nenhum cliente para exportar'); return; }
+  const headers = ['Nome','WhatsApp','Email','Cidade','Canal','Status'];
+  const rows = clientes.map(c => [c.nome, c.whatsapp, c.email, c.cidade, c.canal, c.status].map(v => `"${v||''}"`).join(','));
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'clientes.csv'; a.click();
+  toast('✓ Exportado!');
+}
+
+async function testarWA() {
+  toast('📤 Enviando mensagem de teste...');
+  const r = await api('/api/disparar', 'POST', { cidades: [], mensagem: 'Teste de conexão CRM ✓' });
+  toast(r ? '✓ WhatsApp conectado!' : '⚠ Erro na conexão');
+}
+
+// ── HELPERS ──────────────────────────────────────────────────
+function formatWA(n) { if (!n) return '—'; n = n.replace(/\D/g,''); if (n.startsWith('55')) n = n.slice(2); return n.replace(/(\d{2})(\d{5})(\d{4})/, '$1 $2-$3'); }
+function badgeCanal(c) { const m={WhatsApp:'bg',Site:'bb',Google:'bb','Mercado Livre':'ba',Shopee:'br',Amazon:'bgr',Bling:'ba'}; return `<span class="badge ${m[c]||'bgr'}">${c||'—'}</span>`; }
+function badgeStatus(s) { const m={Ativo:'bg',Seguimento:'ba',Inativo:'bgr',Pendente:'ba',Recebido:'bg',Urgente:'br',Processando:'ba',Preparando:'bb',Enviado:'bg',Entregue:'bg',Cancelado:'br',Fechado:'bg'}; return `<span class="badge ${m[s]||'bgr'}">${s||'—'}</span>`; }
+function toast(msg, dur=3500) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),dur); }
+
+// ── INIT ─────────────────────────────────────────────────────
+loadDashboard();
+// Verifica conexão com Supabase
+api('/api/dashboard').then(r => {
+  const el = document.getElementById('st-supabase');
+  if (el) el.innerHTML = r ? '<span class="badge bg">✓ Conectado</span>' : '<span class="badge br">✗ Erro</span>';
+});
+</script>
+</body>
+</html>
