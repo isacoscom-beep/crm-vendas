@@ -1,0 +1,92 @@
+# 📋 GUIA DE INSTALAÇÃO — CRM Vendas
+# Siga este passo a passo com calma, uma etapa de cada vez.
+
+## ✅ ETAPA 1 — Criar o banco de dados (Supabase)
+
+1. Acesse https://supabase.com e entre na sua conta
+2. Clique no projeto "crm-vendas"
+3. No menu esquerdo, clique em "SQL Editor"
+4. Clique em "New Query"
+5. Abra o arquivo "banco-de-dados.sql" que está na pasta
+6. Copie TODO o conteúdo e cole no editor do Supabase
+7. Clique em "Run" (botão verde)
+8. Deve aparecer "Success" — as tabelas foram criadas!
+
+---
+
+## ✅ ETAPA 2 — Subir o sistema no Railway
+
+1. Acesse https://railway.app e entre na sua conta
+2. Clique em "New Project"
+3. Selecione "Deploy from GitHub repo"
+   → Se não tiver GitHub: clique em "Empty Project" e depois "Add Service" → "Empty Service"
+4. No painel do serviço criado, clique em "Variables" (Variáveis)
+5. Adicione cada variável abaixo clicando em "+ New Variable":
+
+   SUPABASE_URL     = https://qmwsvsrokiztordukive.supabase.co
+   SUPABASE_KEY     = sb_publishable_hUV6cr9GdI5UkOxM1a8RXQ_bxONA9C1
+   ZAPI_INSTANCE_ID = 3F329C3C0AF791178778D654E8E89E86
+   ZAPI_TOKEN       = BA70B70377A9D025AC44CAB6
+   MEU_NUMERO       = 5519996343057
+   EXPEDICAO_NUMBER = 5519996887125
+   PORT             = 3000
+
+6. Após adicionar as variáveis, vá em "Settings" → "Networking" → "Generate Domain"
+7. Anote o link gerado (ex: crm-vendas-production.up.railway.app) — esse é o endereço do seu CRM!
+
+---
+
+## ✅ ETAPA 3 — Fazer o upload dos arquivos no Railway
+
+Opção mais simples (sem GitHub):
+1. Instale o Railway CLI: abra o Terminal/CMD e digite:
+   npm install -g @railway/cli
+2. Na pasta do projeto, execute:
+   railway login
+   railway link (selecione seu projeto)
+   railway up
+
+---
+
+## ✅ ETAPA 4 — Configurar Webhook da Z-API
+
+1. Acesse https://z-api.io e entre na conta
+2. Clique na instância "crm-whatsapp"
+3. Vá em "Webhooks" ou "Configurações"
+4. No campo "Webhook de mensagens recebidas", cole:
+   https://SEU-LINK-RAILWAY.up.railway.app/webhook/whatsapp
+5. Salve — agora toda mensagem que chegar no WhatsApp será processada pelo CRM!
+
+---
+
+## ✅ ETAPA 5 — Configurar Bling (quando quiser)
+
+1. Acesse https://bling.com.br e faça login
+2. Vá em Configurações → Integrações → API
+3. Clique em "Gerar token"
+4. Copie o token
+5. No Railway, vá em Variables e adicione:
+   BLING_TOKEN = (cole o token aqui)
+
+---
+
+## ✅ ETAPA 6 — Configurar WooCommerce (quando quiser)
+
+1. No WordPress, vá em WooCommerce → Configurações → Avançado → REST API
+2. Clique em "Adicionar chave"
+3. Descrição: "CRM Vendas" | Permissão: Leitura/Escrita
+4. Copie a Consumer Key e Consumer Secret
+5. No Railway, adicione as variáveis:
+   WOO_URL    = https://seusite.com.br
+   WOO_KEY    = ck_... (Consumer Key)
+   WOO_SECRET = cs_... (Consumer Secret)
+
+---
+
+## 🎉 Pronto! Seu CRM está no ar.
+
+Acesse: https://SEU-LINK-RAILWAY.up.railway.app
+
+Salve esse link como favorito no celular e no computador.
+
+Dúvidas? Volte ao Claude e pergunte! 😊
