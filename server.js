@@ -531,6 +531,25 @@ app.post('/api/disparar', async (req, res) => {
   res.json({ enviados, total: clientes.length });
 });
 
+// BLING — Callback OAuth
+app.get('/bling/callback', async (req, res) => {
+  const { code } = req.query;
+  if (!code) return res.status(400).json({ erro: 'Código não recebido' });
+  try {
+    const credentials = Buffer.from(`${process.env.BLING_CLIENT_ID}:${process.env.BLING_CLIENT_SECRET}`).toString('base64');
+    const response = await axios.post('https://www.bling.com.br/Api/v3/oauth/token',
+      `grant_type=authorization_code&code=${code}&redirect_uri=https://handsome-forgiveness-production-a14c.up.railway.app/bling/callback`,
+      { headers: { Authorization: `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+    blingAccessToken = response.data.access_token;
+    blingTokenExpiry = Date.now() + (response.data.expires_in * 1000);
+    await supabase.from('configuracoes').upsert({ chave: 'bling_refresh_token', valor: response.data.refresh_token });
+    res.send('<h2>✅ Bling conectado com sucesso! Pode fechar esta aba.</h2>');
+  } catch (err) {
+    res.status(500).json({ erro: 'Erro ao obter token: ' + err.message });
+  }
+});
+
 // ============================================================
 // INICIAR SERVIDOR
 // ============================================================
