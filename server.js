@@ -69,7 +69,6 @@ function extrairCidades(mensagem) {
 
 // ============================================================
 // HELPER: Extrair data da mensagem de rota
-// Ex: "Previsão de rota para 5ª (07/05)"
 // ============================================================
 function extrairData(mensagem) {
   const match = mensagem.match(/\((\d{2}\/\d{2})\)/);
@@ -102,7 +101,7 @@ async function enviarWhatsapp(numero, mensagem) {
 // WEBHOOK — Recebe mensagens do WhatsApp via Z-API
 // ============================================================
 app.post('/webhook/whatsapp', async (req, res) => {
-  res.sendStatus(200); // responde rápido para a Z-API
+  res.sendStatus(200);
   const body = req.body;
   if (!body || !body.phone || !body.text?.message) return;
 
@@ -110,13 +109,11 @@ app.post('/webhook/whatsapp', async (req, res) => {
   const mensagem = body.text.message;
   const expedNumero = EXPEDICAO_NUMBER.replace(/\D/g, '');
 
-  // ── Mensagem da EXPEDIÇÃO → processa rota ──────────────────
   if (numeroRemetente === expedNumero) {
     await processarRotaExpedicao(mensagem);
     return;
   }
 
-  // ── Mensagem de CLIENTE → bot de atendimento ───────────────
   await processarMensagemCliente(numeroRemetente, mensagem);
 });
 
@@ -124,7 +121,6 @@ app.post('/webhook/whatsapp', async (req, res) => {
 // PROCESSAR ROTA DA EXPEDIÇÃO
 // ============================================================
 async function processarRotaExpedicao(mensagem) {
-  // Só processa se for mensagem de previsão de rota
   if (!mensagem.toLowerCase().includes('previsão de rota') &&
       !mensagem.toLowerCase().includes('previsao de rota')) return;
 
@@ -132,16 +128,14 @@ async function processarRotaExpedicao(mensagem) {
   const dataRota = extrairData(mensagem);
   if (!cidades.length) return;
 
-  // Salva a rota no banco
   const dataEntrega = dataRota || new Date(Date.now() + 86400000);
-  const { data: rotaSalva } = await supabase.from('rotas_diarias').insert({
+  await supabase.from('rotas_diarias').insert({
     mensagem_original: mensagem,
     cidades: cidades,
     data_entrega: dataEntrega.toISOString().split('T')[0],
     criado_em: new Date().toISOString(),
-  }).select().single();
+  });
 
-  // Busca clientes das cidades identificadas
   const { data: clientes } = await supabase
     .from('clientes')
     .select('*')
@@ -151,26 +145,17 @@ async function processarRotaExpedicao(mensagem) {
 
   if (!clientes || !clientes.length) return;
 
-  // Dispara mensagens para os clientes
-  const dataFormatada = dataEntrega.toLocaleDateString('pt-BR', {
-    weekday: 'long', day: '2-digit', month: '2-digit'
-  });
-
   for (const cliente of clientes) {
     const msg = `Olá ${cliente.nome}! 😊 Amanhã passaremos na sua região (${cliente.cidade}). Garanta seu pedido até as 15h de hoje para receber amanhã! Qualquer dúvida é só chamar. 🚚`;
     await enviarWhatsapp(cliente.whatsapp, msg);
-    // Pequena pausa para não sobrecarregar a API
     await new Promise(r => setTimeout(r, 1500));
   }
 
-  // Salva atividade
   await supabase.from('atividades').insert({
     tipo: 'rota_disparada',
     descricao: `Rota disparada para ${clientes.length} clientes em ${cidades.join(', ')}`,
     criado_em: new Date().toISOString(),
   });
-
-  console.log(`✅ Rota processada: ${cidades.length} cidades, ${clientes.length} clientes notificados`);
 }
 
 // ============================================================
@@ -179,21 +164,18 @@ async function processarRotaExpedicao(mensagem) {
 async function processarMensagemCliente(numero, mensagem) {
   const msgLower = mensagem.toLowerCase().trim();
 
-  // Busca cliente no banco
   const { data: cliente } = await supabase
     .from('clientes')
     .select('*')
     .eq('whatsapp', numero)
     .single();
 
-  // Respostas do bot
   if (msgLower.includes('pedido') || msgLower.includes('quero') || msgLower.includes('comprar')) {
     const resposta = cliente
       ? `Olá ${cliente.nome}! 😊 Para fazer seu pedido, pode me informar os produtos e quantidades. Lembre-se que pedidos devem ser feitos até as 15h para entrega no dia seguinte! 🚚`
       : `Olá! 😊 Para fazer seu pedido, pode me informar os produtos e quantidades. Lembre-se que pedidos devem ser feitos até as 15h para entrega no dia seguinte! 🚚`;
     await enviarWhatsapp(numero, resposta);
   } else if (msgLower.includes('rota') || msgLower.includes('entrega') || msgLower.includes('quando')) {
-    // Busca próxima rota para a cidade do cliente
     const cidade = cliente?.cidade;
     if (cidade) {
       const { data: proximaRota } = await supabase
@@ -217,7 +199,6 @@ async function processarMensagemCliente(numero, mensagem) {
     await enviarWhatsapp(numero, `Olá${nome}! 😊 Como posso te ajudar? Você pode me perguntar sobre pedidos, entregas ou rotas! 🚚`);
   }
 
-  // Salva conversa
   await supabase.from('conversas').upsert({
     whatsapp: numero,
     cliente_id: cliente?.id || null,
@@ -266,7 +247,10 @@ app.delete('/api/clientes/:id', async (req, res) => {
 // API — PEDIDOS
 // ============================================================
 app.get('/api/pedidos', async (req, res) => {
-  const { data, error } = await supabase.from('pedidos').select('*, clientes(nome)').order('criado_em', { ascending: false });
+  const { canal } = req.query;
+  let query = supabase.from('pedidos').select('*, clientes(nome)').order('criado_em', { ascending: false });
+  if (canal) query = query.eq('canal', canal);
+  const { data, error } = await query;
   if (error) return res.status(500).json({ erro: error.message });
   res.json(data);
 });
@@ -277,7 +261,6 @@ app.post('/api/pedidos', async (req, res) => {
     criado_em: new Date().toISOString(),
   }).select().single();
   if (error) return res.status(500).json({ erro: error.message });
-  // Atualiza último pedido do cliente
   if (req.body.cliente_id) {
     await supabase.from('clientes').update({ ultimo_pedido: new Date().toISOString().split('T')[0] }).eq('id', req.body.cliente_id);
   }
@@ -294,7 +277,6 @@ app.get('/api/rotas-diarias', async (req, res) => {
 });
 
 app.post('/api/rotas-diarias', async (req, res) => {
-  // Permite criar rota manualmente e disparar mensagens
   const { cidades, data_entrega, disparar } = req.body;
   const { data: rota, error } = await supabase.from('rotas_diarias').insert({
     cidades, data_entrega,
@@ -305,7 +287,6 @@ app.post('/api/rotas-diarias', async (req, res) => {
 
   if (disparar) {
     const { data: clientes } = await supabase.from('clientes').select('*').in('cidade', cidades).eq('status', 'Ativo').not('whatsapp', 'is', null);
-    const dataFormatada = new Date(data_entrega + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' });
     for (const cliente of (clientes || [])) {
       const msg = `Olá ${cliente.nome}! 😊 Amanhã passaremos na sua região (${cliente.cidade}). Garanta seu pedido até as 15h de hoje para receber amanhã! Qualquer dúvida é só chamar. 🚚`;
       await enviarWhatsapp(cliente.whatsapp, msg);
@@ -392,74 +373,115 @@ let blingAccessToken = null;
 let blingTokenExpiry = null;
 
 async function getBlingToken() {
+  // Tenta usar token salvo no Supabase (refresh token)
   if (blingAccessToken && blingTokenExpiry > Date.now()) return blingAccessToken;
   try {
-    const credentials = Buffer.from(`${process.env.BLING_CLIENT_ID}:${process.env.BLING_CLIENT_SECRET}`).toString('base64');
-    const response = await axios.post('https://www.bling.com.br/Api/v3/oauth/token',
-      'grant_type=client_credentials',
-      { headers: { Authorization: `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
-    );
-    blingAccessToken = response.data.access_token;
-    blingTokenExpiry = Date.now() + (response.data.expires_in * 1000);
-    return blingAccessToken;
+    const { data: cfg } = await supabase.from('configuracoes').select('valor').eq('chave', 'bling_refresh_token').single();
+    if (cfg?.valor) {
+      const credentials = Buffer.from(`${process.env.BLING_CLIENT_ID}:${process.env.BLING_CLIENT_SECRET}`).toString('base64');
+      const response = await axios.post('https://www.bling.com.br/Api/v3/oauth/token',
+        `grant_type=refresh_token&refresh_token=${cfg.valor}`,
+        { headers: { Authorization: `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
+      );
+      blingAccessToken = response.data.access_token;
+      blingTokenExpiry = Date.now() + (response.data.expires_in * 1000);
+      // Atualiza refresh token
+      await supabase.from('configuracoes').upsert({ chave: 'bling_refresh_token', valor: response.data.refresh_token });
+      return blingAccessToken;
+    }
   } catch (err) {
-    console.error('Erro ao obter token Bling:', err.message);
-    return null;
+    console.error('Erro ao renovar token Bling:', err.message);
   }
+  return null;
 }
 
+// ============================================================
+// BLING — Sincronizar TODOS os pedidos com paginação
+// Filtra apenas: Atendido e Atendido Sankhya
+// Separa por marketplace automaticamente
+// ============================================================
 app.get('/api/bling/pedidos', async (req, res) => {
   try {
     const token = await getBlingToken();
-    if (!token) return res.status(500).json({ erro: 'Erro ao autenticar no Bling' });
-    const response = await axios.get('https://www.bling.com.br/Api/v3/pedidos/vendas', {
-      headers: { Authorization: `Bearer ${token}` },
-      params: { pagina: 1, limite: 50, situacao: 6 }
-    });
-    const pedidosBling = response.data?.data || [];
-    for (const p of pedidosBling) {
-      await supabase.from('pedidos').upsert({
-        id_externo: `bling_${p.id}`,
-        canal: p.loja?.nome || 'Bling',
-        cliente_nome: p.contato?.nome || '',
-        valor: p.totalVenda || 0,
-        status: p.situacao?.valor || 'Processando',
-        criado_em: p.data || new Date().toISOString(),
-      }, { onConflict: 'id_externo' });
+    if (!token) return res.status(500).json({ erro: 'Bling não autenticado. Acesse /bling/auth para conectar.' });
+
+    let pagina = 1;
+    let totalSincronizados = 0;
+    let continuar = true;
+
+    while (continuar) {
+      const response = await axios.get('https://www.bling.com.br/Api/v3/pedidos/vendas', {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { pagina, limite: 100 }
+      });
+
+      const pedidosBling = response.data?.data || [];
+      if (!pedidosBling.length) { continuar = false; break; }
+
+      // Filtra apenas Atendido e Atendido Sankhya
+      const pedidosFiltrados = pedidosBling.filter(p =>
+        p.situacao?.valor === 'Atendido' ||
+        p.situacao?.valor === 'Atendido Sankhya'
+      );
+
+      for (const p of pedidosFiltrados) {
+        // Identifica o marketplace pelo nome da loja
+        const nomeLoja = p.loja?.nome?.toLowerCase() || '';
+        const canal =
+          nomeLoja.includes('shopee') ? 'Shopee' :
+          nomeLoja.includes('amazon') ? 'Amazon' :
+          nomeLoja.includes('mercado') ? 'Mercado Livre' :
+          nomeLoja.includes('whatsapp') ? 'WhatsApp' :
+          nomeLoja.includes('site') ? 'Site' : 'Bling';
+
+        await supabase.from('pedidos').upsert({
+          id_externo: `bling_${p.id}`,
+          canal,
+          cliente_nome: p.contato?.nome || '',
+          valor: p.totalVenda || 0,
+          status: p.situacao?.valor || 'Atendido',
+          criado_em: p.data || new Date().toISOString(),
+        }, { onConflict: 'id_externo' });
+
+        totalSincronizados++;
+      }
+
+      pagina++;
+      await new Promise(r => setTimeout(r, 500));
+
+      // Se veio menos de 100 resultados, chegou na última página
+      if (pedidosBling.length < 100) continuar = false;
     }
-    res.json({ sincronizados: pedidosBling.length });
+
+    res.json({ sincronizados: totalSincronizados, paginas: pagina - 1 });
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao conectar com Bling: ' + err.message });
   }
 });
 
 // ============================================================
-// INTEGRAÇÃO WOOCOMMERCE — Sincronizar pedidos
+// BLING — Callback OAuth (autorização inicial)
 // ============================================================
-app.get('/api/woo/pedidos', async (req, res) => {
-  try {
-    const response = await axios.get(`${process.env.WOO_URL}/wp-json/wc/v3/orders`, {
-      auth: {
-        username: process.env.WOO_KEY,
-        password: process.env.WOO_SECRET,
-      },
-      params: { per_page: 50, status: 'processing,completed' }
-    });
-    const pedidosWoo = response.data || [];
+app.get('/bling/auth', (req, res) => {
+  const url = `https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=${process.env.BLING_CLIENT_ID}&redirect_uri=https://handsome-forgiveness-production-a14c.up.railway.app/bling/callback`;
+  res.redirect(url);
+});
 
-    for (const p of pedidosWoo) {
-      await supabase.from('pedidos').upsert({
-        id_externo: `woo_${p.id}`,
-        canal: 'Site',
-        cliente_nome: `${p.billing?.first_name} ${p.billing?.last_name}`,
-        valor: parseFloat(p.total || 0),
-        status: p.status === 'completed' ? 'Entregue' : 'Processando',
-        criado_em: p.date_created || new Date().toISOString(),
-      }, { onConflict: 'id_externo' });
-    }
-    res.json({ sincronizados: pedidosWoo.length });
+app.get('/bling/callback', async (req, res) => {
+  const { code } = req.query;
+  if (!code) return res.status(400).json({ erro: 'Código não recebido' });
+  try {
+    const credentials = Buffer.from(`${process.env.BLING_CLIENT_ID}:${process.env.BLING_CLIENT_SECRET}`).toString('base64');
+    const response = await axios.post('https://www.bling.com.br/Api/v3/oauth/token',
+      `grant_type=authorization_code&code=${code}&redirect_uri=https://handsome-forgiveness-production-a14c.up.railway.app/bling/callback`,
+      { headers: { Authorization: `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+    blingAccessToken = response.data.access_token;
+    blingTokenExpiry = Date.now() + (response.data.expires_in * 1000);
+    await supabase.from('configuracoes').upsert({ chave: 'bling_refresh_token', valor: response.data.refresh_token });
+    res.send('<h2>✅ Bling conectado com sucesso! Pode fechar esta aba.</h2>');
   } catch (err) {
-    res.status(500).json({ erro: 'Erro ao conectar com WooCommerce. Verifique as credenciais.' });
+    res.status(500).json({ erro: 'Erro ao obter token: ' + err.message });
   }
 });
 
@@ -473,13 +495,12 @@ app.get('/api/ml/pedidos', async (req, res) => {
       params: { seller: process.env.ML_SELLER_ID, limit: 50 }
     });
     const pedidosML = response.data?.results || [];
-
     for (const p of pedidosML) {
       await supabase.from('pedidos').upsert({
         id_externo: `ml_${p.id}`,
         canal: 'Mercado Livre',
         valor: parseFloat(p.total_amount || 0),
-        status: p.status === 'paid' ? 'Processando' : 'Pendente',
+        status: p.status === 'paid' ? 'Atendido' : 'Em aberto',
         criado_em: p.date_created || new Date().toISOString(),
       }, { onConflict: 'id_externo' });
     }
@@ -529,30 +550,6 @@ app.post('/api/disparar', async (req, res) => {
     await new Promise(r => setTimeout(r, 1500));
   }
   res.json({ enviados, total: clientes.length });
-});
-
-app.get('/bling/auth', (req, res) => {
-  const url = `https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=${process.env.BLING_CLIENT_ID}&redirect_uri=https://handsome-forgiveness-production-a14c.up.railway.app/bling/callback`;
-  res.redirect(url);
-});
-
-// BLING — Callback OAuth
-app.get('/bling/callback', async (req, res) => {
-  const { code } = req.query;
-  if (!code) return res.status(400).json({ erro: 'Código não recebido' });
-  try {
-    const credentials = Buffer.from(`${process.env.BLING_CLIENT_ID}:${process.env.BLING_CLIENT_SECRET}`).toString('base64');
-    const response = await axios.post('https://www.bling.com.br/Api/v3/oauth/token',
-      `grant_type=authorization_code&code=${code}&redirect_uri=https://handsome-forgiveness-production-a14c.up.railway.app/bling/callback`,
-      { headers: { Authorization: `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
-    );
-    blingAccessToken = response.data.access_token;
-    blingTokenExpiry = Date.now() + (response.data.expires_in * 1000);
-    await supabase.from('configuracoes').upsert({ chave: 'bling_refresh_token', valor: response.data.refresh_token });
-    res.send('<h2>✅ Bling conectado com sucesso! Pode fechar esta aba.</h2>');
-  } catch (err) {
-    res.status(500).json({ erro: 'Erro ao obter token: ' + err.message });
-  }
 });
 
 // ============================================================
