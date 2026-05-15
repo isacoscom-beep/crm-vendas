@@ -531,6 +531,11 @@ app.post('/api/disparar', async (req, res) => {
   res.json({ enviados, total: clientes.length });
 });
 
+app.get('/bling/auth', (req, res) => {
+  const url = `https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=${process.env.BLING_CLIENT_ID}&redirect_uri=https://handsome-forgiveness-production-a14c.up.railway.app/bling/callback`;
+  res.redirect(url);
+});
+
 // BLING — Callback OAuth
 app.get('/bling/callback', async (req, res) => {
   const { code } = req.query;
