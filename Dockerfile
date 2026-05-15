@@ -1,7 +1,7 @@
 FROM node:18-alpine
 WORKDIR /app
-COPY package.json .
+COPY crm-completo/package.json .
 RUN npm install
-COPY . .
+COPY crm-completo/ .
 EXPOSE 3000
 CMD ["node", "server.js"]
