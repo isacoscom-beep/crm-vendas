@@ -386,21 +386,42 @@ app.get('/api/dashboard', async (req, res) => {
 });
 
 // ============================================================
-// INTEGRAÇÃO BLING — Sincronizar pedidos
+// INTEGRAÇÃO BLING — OAuth 2.0
 // ============================================================
+let blingAccessToken = null;
+let blingTokenExpiry = null;
+
+async function getBlingToken() {
+  if (blingAccessToken && blingTokenExpiry > Date.now()) return blingAccessToken;
+  try {
+    const credentials = Buffer.from(`${process.env.BLING_CLIENT_ID}:${process.env.BLING_CLIENT_SECRET}`).toString('base64');
+    const response = await axios.post('https://www.bling.com.br/Api/v3/oauth/token',
+      'grant_type=client_credentials',
+      { headers: { Authorization: `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+    blingAccessToken = response.data.access_token;
+    blingTokenExpiry = Date.now() + (response.data.expires_in * 1000);
+    return blingAccessToken;
+  } catch (err) {
+    console.error('Erro ao obter token Bling:', err.message);
+    return null;
+  }
+}
+
 app.get('/api/bling/pedidos', async (req, res) => {
   try {
+    const token = await getBlingToken();
+    if (!token) return res.status(500).json({ erro: 'Erro ao autenticar no Bling' });
     const response = await axios.get('https://www.bling.com.br/Api/v3/pedidos/vendas', {
-      headers: { Authorization: `Bearer ${process.env.BLING_TOKEN}` },
-      params: { pagina: 1, limite: 50 }
+      headers: { Authorization: `Bearer ${token}` },
+      params: { pagina: 1, limite: 50, situacao: 6 }
     });
     const pedidosBling = response.data?.data || [];
-
-    // Sincroniza com o banco
     for (const p of pedidosBling) {
       await supabase.from('pedidos').upsert({
         id_externo: `bling_${p.id}`,
-        canal: 'Bling',
+        canal: p.loja?.nome || 'Bling',
+        cliente_nome: p.contato?.nome || '',
         valor: p.totalVenda || 0,
         status: p.situacao?.valor || 'Processando',
         criado_em: p.data || new Date().toISOString(),
@@ -408,7 +429,7 @@ app.get('/api/bling/pedidos', async (req, res) => {
     }
     res.json({ sincronizados: pedidosBling.length });
   } catch (err) {
-    res.status(500).json({ erro: 'Erro ao conectar com Bling. Verifique o token.' });
+    res.status(500).json({ erro: 'Erro ao conectar com Bling: ' + err.message });
   }
 });
 
