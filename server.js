@@ -419,11 +419,9 @@ app.get('/api/bling/pedidos', async (req, res) => {
       if (!pedidosBling.length) { continuar = false; break; }
 
       // Filtra apenas Atendido e Atendido Sankhya
-      const pedidosFiltrados = pedidosBling.filter(p =>
-        p.situacao?.valor === 'Atendido' ||
-        p.situacao?.valor === 'Atendido Sankhya'
-      );
-
+      const pedidosFiltrados = pedidosBling;
+        console.log('Status encontrados:', pedidosBling.map(p => p.situacao?.valor));
+       
       for (const p of pedidosFiltrados) {
         // Identifica o marketplace pelo nome da loja
         const nomeLoja = p.loja?.nome?.toLowerCase() || '';
