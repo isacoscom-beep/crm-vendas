@@ -332,7 +332,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <div class="card-hdr">
       <span class="card-title">Pedidos</span>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <select id="fil-ped-canal" class="btn" onchange="loadPedidos()"><option value="">Todos os Canais</option><option>Mercado Livre</option><option>Shopee</option><option>Amazon</option><option>Site</option><option>WhatsApp</option><option>Bling</option></select>
+        <select id="fil-ped-canal" class="btn" onchange="loadPedidos()"><option value="">Todos os Canais</option><option>WhatsApp</option><option>Mercado Livre</option><option>Shopee</option><option>Amazon</option></select>
         <input type="date" id="fil-ped-inicio" class="btn" onchange="loadPedidos()" title="Data inicial" style="font-size:12px">
         <input type="date" id="fil-ped-fim" class="btn" onchange="loadPedidos()" title="Data final" style="font-size:12px">
         <button class="btn success" onclick="sincWoo()">🔄 WooCommerce</button>
@@ -450,7 +450,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div class="card-hdr">
         <span class="card-title">Clientes Recorrentes <span class="card-sub">(com WhatsApp)</span></span>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <select id="seg-rec-canal" class="btn" onchange="loadRecorrentes()"><option value="">Todos os Canais</option><option>WhatsApp</option><option>Mercado Livre</option><option>Shopee</option><option>Amazon</option><option>Site</option><option>Bling</option></select>
+          <select id="seg-rec-canal" class="btn" onchange="loadRecorrentes()"><option value="">Todos os Canais</option><option>WhatsApp</option><option>Mercado Livre</option><option>Shopee</option><option>Amazon</option></select>
           <select id="seg-rec-status" class="btn" onchange="loadRecorrentes()"><option value="">Todos os Status</option><option value="proximo">Próximos (≤7 dias)</option><option value="atrasado">Atrasados</option><option value="em_dia">Em dia</option></select>
           <button class="btn" onclick="loadRecorrentes()">🔄</button>
         </div>
@@ -476,7 +476,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div class="card-hdr">
         <span class="card-title">Clientes com Compra Única <span class="card-sub">(com WhatsApp)</span></span>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <select id="seg-uni-canal" class="btn" onchange="loadUnicaCompra()"><option value="">Todos os Canais</option><option>WhatsApp</option><option>Mercado Livre</option><option>Shopee</option><option>Amazon</option><option>Site</option><option>Bling</option></select>
+          <select id="seg-uni-canal" class="btn" onchange="loadUnicaCompra()"><option value="">Todos os Canais</option><option>WhatsApp</option><option>Mercado Livre</option><option>Shopee</option><option>Amazon</option></select>
           <button class="btn" onclick="loadUnicaCompra()">🔄</button>
         </div>
       </div>

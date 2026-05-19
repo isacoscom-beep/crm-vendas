@@ -254,7 +254,7 @@ app.get('/api/pedidos', async (req, res) => {
   if (dataFinal) query = query.lte('criado_em', dataFinal + 'T23:59:59');
   const { data, error } = await query;
   if (error) return res.status(500).json({ erro: error.message });
-  res.json(data);
+  res.json((data || []).map(p => ({ ...p, canal: normalizarCanal(p.canal) })));
 });
 
 app.post('/api/pedidos', async (req, res) => {
@@ -378,7 +378,7 @@ async function buscarTodosPedidos() {
     .select('cliente_nome, criado_em, valor, canal')
     .order('criado_em', { ascending: true });
   if (error) throw new Error(error.message);
-  return data || [];
+  return (data || []).map(p => ({ ...p, canal: normalizarCanal(p.canal) }));
 }
 
 function agruparPorCliente(pedidos) {
@@ -692,12 +692,17 @@ const LOJAS_BLING = {
   205540675: 'Mercado Livre',
   205673727: 'Shopee',
   205664970: 'Amazon',
-  204231519: 'Site',
 };
 
 function resolverCanal(p) {
   const lojaId = p.loja?.id;
   return LOJAS_BLING[lojaId] || 'WhatsApp';
+}
+
+// Pedidos do site próprio e Bling direto são todos via WhatsApp
+function normalizarCanal(canal) {
+  if (!canal || canal === 'Site' || canal === 'Bling') return 'WhatsApp';
+  return canal;
 }
 
 async function getBlingToken() {
@@ -936,6 +941,19 @@ app.post('/api/disparar', async (req, res) => {
     await new Promise(r => setTimeout(r, 1500));
   }
   res.json({ enviados, total: clientes.length });
+});
+
+// ============================================================
+// MIGRAÇÃO — Normaliza canais "Site" e "Bling" para "WhatsApp"
+// ============================================================
+app.post('/api/admin/normalizar-canais', async (req, res) => {
+  const canaisParaNormalizar = ['Site', 'Bling'];
+  let total = 0;
+  for (const canal of canaisParaNormalizar) {
+    const { data } = await supabase.from('pedidos').update({ canal: 'WhatsApp' }).eq('canal', canal).select('id');
+    total += data?.length || 0;
+  }
+  res.json({ ok: true, atualizados: total });
 });
 
 // ============================================================
