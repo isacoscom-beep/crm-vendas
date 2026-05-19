@@ -436,14 +436,14 @@ app.get('/api/analytics/unica-compra', async (req, res) => {
     const { data: clientes } = await supabase.from('clientes').select('nome, whatsapp');
     const mapaWA = {};
     for (const c of (clientes || [])) {
-      if (c.nome) mapaWA[c.nome.trim().toLowerCase()] = c.whatsapp;
+      if (c.nome) mapaWA[normalizarNome(c.nome)] = c.whatsapp;
     }
 
     const resultado = [];
     for (const [nome, dados] of Object.entries(mapa)) {
       if (dados.compras.length !== 1) continue;
       if (canal && !dados.canais.has(canal)) continue;
-      const wa = mapaWA[nome.toLowerCase()] || null;
+      const wa = mapaWA[normalizarNome(nome)] || null;
       const dataCompra = new Date(dados.compras[0]);
       const diasDesde = Math.floor((agora - dataCompra) / 86400000);
       resultado.push({
@@ -474,14 +474,14 @@ app.get('/api/analytics/recorrentes', async (req, res) => {
     const { data: clientes } = await supabase.from('clientes').select('nome, whatsapp');
     const mapaWA = {};
     for (const c of (clientes || [])) {
-      if (c.nome) mapaWA[c.nome.trim().toLowerCase()] = c.whatsapp;
+      if (c.nome) mapaWA[normalizarNome(c.nome)] = c.whatsapp;
     }
 
     const resultado = [];
     for (const [nome, dados] of Object.entries(mapa)) {
       if (dados.compras.length < 2) continue;
       if (canal && !dados.canais.has(canal)) continue;
-      const wa = mapaWA[nome.toLowerCase()] || null;
+      const wa = mapaWA[normalizarNome(nome)] || null;
 
       const datas = dados.compras.map(d => new Date(d)).sort((a, b) => a - b);
       let totalDias = 0;
@@ -533,7 +533,7 @@ app.post('/api/notificacoes/gerar', async (req, res) => {
     const { data: clientes } = await supabase.from('clientes').select('nome, whatsapp').not('whatsapp', 'is', null);
     const mapaWA = {};
     for (const c of (clientes || [])) {
-      if (c.nome) mapaWA[c.nome.trim().toLowerCase()] = c.whatsapp;
+      if (c.nome) mapaWA[normalizarNome(c.nome)] = c.whatsapp;
     }
 
     const candidatas = [];
@@ -541,7 +541,7 @@ app.post('/api/notificacoes/gerar', async (req, res) => {
     for (const [nome, dados] of Object.entries(mapa)) {
       const ultimaCompra = new Date(dados.compras[dados.compras.length - 1]);
       const diasSemComprar = Math.floor((agora - ultimaCompra) / 86400000);
-      const wa = mapaWA[nome.toLowerCase()] || null;
+      const wa = mapaWA[normalizarNome(nome)] || null;
       const primeiroNome = nome.split(' ')[0];
 
       if (dados.compras.length === 1 && diasSemComprar >= 30) {
@@ -704,6 +704,13 @@ function normalizarCanal(canal) {
   return canal;
 }
 
+// Remove acentos, espaços duplos e converte para minúsculas para comparação de nomes
+function normalizarNome(nome) {
+  return (nome || '').toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, ' ').trim();
+}
+
 async function getBlingToken() {
   // Tenta usar token salvo no Supabase (refresh token)
   if (blingAccessToken && blingTokenExpiry > Date.now()) return blingAccessToken;
@@ -849,12 +856,10 @@ app.get('/api/bling/contatos', async (req, res) => {
         if (wa.startsWith('0')) wa = wa.slice(1);
         if (!wa.startsWith('55') && wa.length <= 11) wa = '55' + wa;
 
-        // Tenta encontrar cliente pelo nome (case-insensitive)
-        const { data: existente } = await supabase
-          .from('clientes')
-          .select('id, whatsapp')
-          .ilike('nome', c.nome.trim())
-          .maybeSingle();
+        // Busca cliente pelo nome normalizado (ignora acentos, case, espaços)
+        const { data: todosClientes } = await supabase.from('clientes').select('id, nome, whatsapp');
+        const nomeNorm = normalizarNome(c.nome);
+        const existente = (todosClientes || []).find(x => normalizarNome(x.nome) === nomeNorm);
 
         if (existente) {
           if (!existente.whatsapp) {
