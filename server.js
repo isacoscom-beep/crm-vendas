@@ -488,6 +488,22 @@ app.get('/api/bling/pedidos', async (req, res) => {
 });
 
 // ============================================================
+// BLING — Lista canais de venda (para descobrir IDs das lojas)
+// ============================================================
+app.get('/api/bling/canais', async (req, res) => {
+  try {
+    const token = await getBlingToken();
+    if (!token) return res.status(500).json({ erro: 'Bling não autenticado' });
+    const response = await axios.get('https://www.bling.com.br/Api/v3/canaisdevenda', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    res.json(response.data?.data || []);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// ============================================================
 // BLING — Debug: mostra dados brutos dos pedidos para diagnóstico
 // ============================================================
 app.get('/api/bling/debug', async (req, res) => {
