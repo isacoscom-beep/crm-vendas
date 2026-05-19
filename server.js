@@ -550,6 +550,31 @@ app.post('/api/disparar', async (req, res) => {
   res.json({ enviados, total: clientes.length });
 });
 
+// DEBUG — Ver dados brutos do Bling
+app.get('/api/bling/debug', async (req, res) => {
+  try {
+    const token = await getBlingToken();
+    if (!token) return res.status(500).json({ erro: 'Bling não autenticado' });
+    const response = await axios.get('https://www.bling.com.br/Api/v3/pedidos/vendas', {
+      headers: { Authorization: `Bearer ${token}` },
+      params: { pagina: 1, limite: 5 }
+    });
+    const pedidos = response.data?.data || [];
+    const debug = pedidos.map(p => ({
+      id: p.id,
+      status_codigo: p.situacao?.id,
+      status_nome: p.situacao?.valor,
+      loja_nome: p.loja?.nome,
+      valor: p.totalVenda,
+      valor2: p.total,
+      contato: p.contato?.nome,
+    }));
+    res.json(debug);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 // ============================================================
 // INICIAR SERVIDOR
 // ============================================================
