@@ -248,7 +248,9 @@ app.delete('/api/clientes/:id', async (req, res) => {
 // ============================================================
 app.get('/api/pedidos', async (req, res) => {
   const { canal, dataInicial, dataFinal } = req.query;
-  let query = supabase.from('pedidos').select('*, clientes(nome)').order('criado_em', { ascending: false });
+  let query = supabase.from('pedidos').select('*, clientes(nome)')
+    .in('status', STATUS_CONCLUIDO)
+    .order('criado_em', { ascending: false });
   if (canal) query = query.eq('canal', canal);
   if (dataInicial) query = query.gte('criado_em', dataInicial);
   if (dataFinal) query = query.lte('criado_em', dataFinal + 'T23:59:59');
@@ -376,6 +378,7 @@ async function buscarTodosPedidos() {
   const { data, error } = await supabase
     .from('pedidos')
     .select('cliente_nome, criado_em, valor, canal')
+    .in('status', STATUS_CONCLUIDO)
     .order('criado_em', { ascending: true });
   if (error) throw new Error(error.message);
   return (data || []).map(p => ({ ...p, canal: normalizarCanal(p.canal) }));
@@ -736,10 +739,12 @@ async function getBlingToken() {
   return null;
 }
 
+const STATUS_CONCLUIDO = ['Atendido', 'Atendido Sankhya'];
+
 // ============================================================
 // BLING — Sincronizar TODOS os pedidos com paginação
-// Filtra apenas: Atendido e Atendido Sankhya
-// Separa por marketplace automaticamente
+// Salva todos os status para manter histórico atualizado
+// CRM exibe apenas Atendido e Atendido Sankhya
 // ============================================================
 app.get('/api/bling/pedidos', async (req, res) => {
   try {
@@ -759,16 +764,11 @@ app.get('/api/bling/pedidos', async (req, res) => {
       const pedidosBling = response.data?.data || [];
       if (!pedidosBling.length) { continuar = false; break; }
 
-      // Filtra apenas pedidos Atendido e Atendido Sankhya (resolve IDs numéricos também)
-      const pedidosFiltrados = pedidosBling.filter(p => {
-        const status = resolverStatus(p.situacao);
-        return status === 'Atendido' || status === 'Atendido Sankhya';
-      });
-
-      for (const p of pedidosFiltrados) {
+      for (const p of pedidosBling) {
         const canal = resolverCanal(p);
         const status = resolverStatus(p.situacao);
 
+        // Salva todos os pedidos — atualiza status se mudou no Bling
         await supabase.from('pedidos').upsert({
           id_externo: `bling_${p.id}`,
           canal,
@@ -778,13 +778,12 @@ app.get('/api/bling/pedidos', async (req, res) => {
           criado_em: p.data || new Date().toISOString(),
         }, { onConflict: 'id_externo' });
 
-        totalSincronizados++;
+        if (STATUS_CONCLUIDO.includes(status)) totalSincronizados++;
       }
 
       pagina++;
       await new Promise(r => setTimeout(r, 500));
 
-      // Se veio menos de 100 resultados, chegou na última página
       if (pedidosBling.length < 100) continuar = false;
     }
 
