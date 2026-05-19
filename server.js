@@ -749,6 +749,7 @@ async function sincronizarBlingPedidos() {
   if (!token) throw new Error('Bling não autenticado');
 
   let pagina = 1, totalSincronizados = 0, continuar = true;
+  const nomesSincronizados = new Set();
   while (continuar) {
     const response = await axios.get('https://www.bling.com.br/Api/v3/pedidos/vendas', {
       headers: { Authorization: `Bearer ${token}` },
@@ -763,16 +764,8 @@ async function sincronizarBlingPedidos() {
       const clienteNome = p.contato?.nome || '';
       const criado_em = p.data || new Date().toISOString();
       const valor = parseFloat(p.total || p.totalVenda || 0);
-      const dataStr = criado_em.split('T')[0];
 
-      // Remove registro antigo sem id_externo com mesmo nome+valor+dia (duplicata pré-sync)
-      await supabase.from('pedidos')
-        .delete()
-        .is('id_externo', null)
-        .eq('cliente_nome', clienteNome)
-        .eq('valor', valor)
-        .gte('criado_em', dataStr)
-        .lte('criado_em', dataStr + 'T23:59:59');
+      if (clienteNome) nomesSincronizados.add(clienteNome);
 
       await supabase.from('pedidos').upsert({
         id_externo: `bling_${p.id}`,
@@ -789,6 +782,16 @@ async function sincronizarBlingPedidos() {
     await new Promise(r => setTimeout(r, 500));
     if (pedidosBling.length < 100) continuar = false;
   }
+
+  // Remove duplicatas: registros sem id_externo de clientes que já estão no Bling
+  const nomesParaLimpar = [...nomesSincronizados];
+  if (nomesParaLimpar.length) {
+    await supabase.from('pedidos')
+      .delete()
+      .is('id_externo', null)
+      .in('cliente_nome', nomesParaLimpar);
+  }
+
   return { sincronizados: totalSincronizados, paginas: pagina - 1 };
 }
 
@@ -1028,6 +1031,14 @@ app.post('/api/disparar', async (req, res) => {
 // ============================================================
 // MIGRAÇÃO — Normaliza canais "Site" e "Bling" para "WhatsApp"
 // ============================================================
+app.get('/api/debug/pedidos', async (req, res) => {
+  const { nome } = req.query;
+  let query = supabase.from('pedidos').select('id, id_externo, cliente_nome, status, valor, criado_em, canal').order('criado_em', { ascending: false }).limit(50);
+  if (nome) query = query.ilike('cliente_nome', `%${nome}%`);
+  const { data, error } = await query;
+  res.json({ total: data?.length || 0, pedidos: data || [], error });
+});
+
 app.post('/api/admin/normalizar-canais', async (req, res) => {
   const canaisParaNormalizar = ['Site', 'Bling'];
   let total = 0;
