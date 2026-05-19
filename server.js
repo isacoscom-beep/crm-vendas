@@ -488,16 +488,34 @@ app.get('/api/bling/pedidos', async (req, res) => {
 });
 
 // ============================================================
-// BLING — Lista canais de venda (para descobrir IDs das lojas)
+// BLING — Descobre nomes dos IDs de loja encontrados nos pedidos
 // ============================================================
-app.get('/api/bling/canais', async (req, res) => {
+app.get('/api/bling/lojas', async (req, res) => {
   try {
     const token = await getBlingToken();
     if (!token) return res.status(500).json({ erro: 'Bling não autenticado' });
-    const response = await axios.get('https://www.bling.com.br/Api/v3/canaisdevenda', {
+
+    // Busca os IDs únicos de loja nos pedidos
+    const response = await axios.get('https://www.bling.com.br/Api/v3/pedidos/vendas', {
       headers: { Authorization: `Bearer ${token}` },
+      params: { pagina: 1, limite: 100 }
     });
-    res.json(response.data?.data || []);
+    const pedidos = response.data?.data || [];
+    const idsUnicos = [...new Set(pedidos.map(p => p.loja?.id).filter(id => id && id !== 0))];
+
+    // Tenta buscar detalhes de cada loja
+    const lojas = [];
+    for (const id of idsUnicos) {
+      try {
+        const r = await axios.get(`https://www.bling.com.br/Api/v3/lojas/${id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        lojas.push({ id, dados: r.data?.data });
+      } catch {
+        lojas.push({ id, dados: null, erro: 'não encontrado' });
+      }
+    }
+    res.json({ ids_encontrados: idsUnicos, lojas });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
