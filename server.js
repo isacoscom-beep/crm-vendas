@@ -684,12 +684,19 @@ const STATUS_BLING = {
 
 function resolverStatus(situacao) {
   if (!situacao) return 'Desconhecido';
-  const id = typeof situacao === 'object' ? situacao.id : situacao;
-  const valor = typeof situacao === 'object' ? situacao.valor : null;
-  // Se valor é texto real (não número), usa direto
-  if (valor && isNaN(valor)) return valor;
-  // Caso contrário, resolve pelo ID
-  return STATUS_BLING[Number(id)] || STATUS_BLING[Number(valor)] || `Status ${id ?? valor}`;
+  const id = Number(typeof situacao === 'object' ? situacao.id : situacao);
+  const valorRaw = typeof situacao === 'object' ? situacao.valor : null;
+  // Algumas versões da API retornam o texto diretamente no valor
+  if (valorRaw && typeof valorRaw === 'string' && isNaN(Number(valorRaw))) return valorRaw;
+  const valor = Number(valorRaw);
+  // Na API v3 do Bling, situacao.valor=1 indica pedido concluído, valor=0 indica aberto
+  if (valor === 1) {
+    if (id === 9) return 'Atendido Sankhya';
+    return 'Atendido';
+  }
+  // Pedido não concluído: tenta nome específico pelo ID
+  const nomes = { 1: 'Em Aberto', 2: 'Em Andamento', 3: 'Cancelado', 4: 'Vencido', 6: 'Em Aberto', 10: 'Verificado', 11: 'Parcialmente Atendido' };
+  return nomes[id] || 'Em Aberto';
 }
 
 const LOJAS_BLING = {
@@ -1093,6 +1100,31 @@ app.get('/api/debug/pedidos', async (req, res) => {
   if (nome) query = query.ilike('cliente_nome', `%${nome}%`);
   const { data, error } = await query;
   res.json({ total: data?.length || 0, pedidos: data || [], error });
+});
+
+app.post('/api/admin/corrigir-status-bling', async (req, res) => {
+  try {
+    const token = await getBlingToken();
+    if (!token) return res.status(500).json({ erro: 'Bling não autenticado' });
+    // Busca todos pedidos do banco com id_externo do Bling e status "Atendido" (possivelmente errado)
+    const { data: pedidosDB } = await supabase.from('pedidos').select('id, id_externo, status').like('id_externo', 'bling_%').eq('status', 'Atendido');
+    let corrigidos = 0;
+    for (const p of pedidosDB || []) {
+      const blingId = p.id_externo.replace('bling_', '');
+      try {
+        const r = await axios.get(`https://www.bling.com.br/Api/v3/pedidos/vendas/${blingId}`, { headers: { Authorization: `Bearer ${token}` } });
+        const statusReal = resolverStatus(r.data?.data?.situacao);
+        if (statusReal !== p.status) {
+          await supabase.from('pedidos').update({ status: statusReal }).eq('id', p.id);
+          corrigidos++;
+        }
+        await new Promise(resolve => setTimeout(resolve, 300));
+      } catch {}
+    }
+    res.json({ ok: true, verificados: pedidosDB?.length || 0, corrigidos });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
 });
 
 app.post('/api/admin/normalizar-canais', async (req, res) => {
