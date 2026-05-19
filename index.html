@@ -336,8 +336,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <select id="fil-ped-canal" class="btn" onchange="loadPedidos()"><option value="">Todos os Canais</option><option>WhatsApp</option><option>Mercado Livre</option><option>Shopee</option><option>Amazon</option></select>
         <input type="date" id="fil-ped-inicio" class="btn" onchange="loadPedidos()" title="Data inicial" style="font-size:12px">
         <input type="date" id="fil-ped-fim" class="btn" onchange="loadPedidos()" title="Data final" style="font-size:12px">
-        <button class="btn success" onclick="sincWoo()">🔄 WooCommerce</button>
-        <button class="btn success" onclick="sincML()">🔄 Mercado Livre</button>
+        <button class="btn success" onclick="sincBlingPedidos()">🔄 Sincronizar Bling</button>
         <button class="btn primary" onclick="openModal('pedido')">+ Novo Pedido</button>
       </div>
     </div>
@@ -816,6 +815,7 @@ async function delPedido(id) {
 async function sincWoo() { toast('🔄 Sincronizando WooCommerce...'); const r = await api('/api/woo/pedidos'); if (r) { toast(`✓ ${r.sincronizados} pedidos sincronizados`); loadPedidos(); } }
 async function sincML() { toast('🔄 Sincronizando Mercado Livre...'); const r = await api('/api/ml/pedidos'); if (r) { toast(`✓ ${r.sincronizados} pedidos sincronizados`); loadPedidos(); } }
 async function sincBling() { toast('🔄 Sincronizando Bling...'); const r = await api('/api/bling/pedidos'); if (r) { toast(`✓ ${r.sincronizados} pedidos do Bling`); } }
+async function sincBlingPedidos() { toast('🔄 Sincronizando Bling...'); const r = await api('/api/bling/pedidos'); if (r) { toast(`✓ ${r.sincronizados} pedidos sincronizados`); loadPedidos(); } }
 
 // ── RELATÓRIOS ───────────────────────────────────────────────
 async function loadRelatorios() {
