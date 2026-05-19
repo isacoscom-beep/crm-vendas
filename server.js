@@ -760,13 +760,27 @@ async function sincronizarBlingPedidos() {
     for (const p of pedidosBling) {
       const canal = resolverCanal(p);
       const status = resolverStatus(p.situacao);
+      const clienteNome = p.contato?.nome || '';
+      const criado_em = p.data || new Date().toISOString();
+      const valor = parseFloat(p.total || p.totalVenda || 0);
+      const dataStr = criado_em.split('T')[0];
+
+      // Remove registro antigo sem id_externo com mesmo nome+valor+dia (duplicata pré-sync)
+      await supabase.from('pedidos')
+        .delete()
+        .is('id_externo', null)
+        .eq('cliente_nome', clienteNome)
+        .eq('valor', valor)
+        .gte('criado_em', dataStr)
+        .lte('criado_em', dataStr + 'T23:59:59');
+
       await supabase.from('pedidos').upsert({
         id_externo: `bling_${p.id}`,
         canal,
-        cliente_nome: p.contato?.nome || '',
-        valor: parseFloat(p.total || p.totalVenda || 0),
+        cliente_nome: clienteNome,
+        valor,
         status,
-        criado_em: p.data || new Date().toISOString(),
+        criado_em,
       }, { onConflict: 'id_externo' });
       if (STATUS_CONCLUIDO.includes(status)) totalSincronizados++;
     }
