@@ -340,7 +340,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <button class="btn primary" onclick="openModal('pedido')">+ Novo Pedido</button>
       </div>
     </div>
-    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Canal</th><th>Cliente</th><th>Valor</th><th>Status</th><th>Data</th><th></th></tr></thead><tbody id="tbl-pedidos"></tbody></table></div>
+    <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Nº Bling</th><th>Canal</th><th>Cliente</th><th>Valor</th><th>Status</th><th>Data</th><th></th></tr></thead><tbody id="tbl-pedidos"></tbody></table></div>
     <div id="ped-empty" class="empty" style="display:none"><div class="ei">🛒</div><p>Nenhum pedido registrado ainda.</p></div>
   </div>
 </div>
@@ -795,7 +795,7 @@ async function loadPedidos() {
   if (!pedidos.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
   empty.style.display = 'none';
   tbody.innerHTML = pedidos.map((p, i) => `<tr>
-    <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">#${String(i + 1001)}</td>
+    <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">${p.numero_pedido ? '#'+p.numero_pedido : '—'}</td>
     <td>${badgeCanal(p.canal)}</td>
     <td>${p.clientes?.nome || p.cliente_nome || '—'}</td>
     <td style="font-family:'DM Mono',monospace">R$${parseFloat(p.valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>

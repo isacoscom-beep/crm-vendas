@@ -769,6 +769,7 @@ async function sincronizarBlingPedidos() {
 
       await supabase.from('pedidos').upsert({
         id_externo: `bling_${p.id}`,
+        numero_pedido: String(p.numero || ''),
         canal,
         cliente_nome: clienteNome,
         valor,
