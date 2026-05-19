@@ -742,52 +742,101 @@ async function getBlingToken() {
 const STATUS_CONCLUIDO = ['Atendido', 'Atendido Sankhya'];
 
 // ============================================================
-// BLING — Sincronizar TODOS os pedidos com paginação
-// Salva todos os status para manter histórico atualizado
-// CRM exibe apenas Atendido e Atendido Sankhya
+// BLING — Funções de sync reutilizáveis (rotas + agendamento)
 // ============================================================
-app.get('/api/bling/pedidos', async (req, res) => {
-  try {
-    const token = await getBlingToken();
-    if (!token) return res.status(500).json({ erro: 'Bling não autenticado. Acesse /bling/auth para conectar.' });
+async function sincronizarBlingPedidos() {
+  const token = await getBlingToken();
+  if (!token) throw new Error('Bling não autenticado');
 
-    let pagina = 1;
-    let totalSincronizados = 0;
-    let continuar = true;
+  let pagina = 1, totalSincronizados = 0, continuar = true;
+  while (continuar) {
+    const response = await axios.get('https://www.bling.com.br/Api/v3/pedidos/vendas', {
+      headers: { Authorization: `Bearer ${token}` },
+      params: { pagina, limite: 100 },
+    });
+    const pedidosBling = response.data?.data || [];
+    if (!pedidosBling.length) { continuar = false; break; }
 
-    while (continuar) {
-      const response = await axios.get('https://www.bling.com.br/Api/v3/pedidos/vendas', {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { pagina, limite: 100 }
-      });
-
-      const pedidosBling = response.data?.data || [];
-      if (!pedidosBling.length) { continuar = false; break; }
-
-      for (const p of pedidosBling) {
-        const canal = resolverCanal(p);
-        const status = resolverStatus(p.situacao);
-
-        // Salva todos os pedidos — atualiza status se mudou no Bling
-        await supabase.from('pedidos').upsert({
-          id_externo: `bling_${p.id}`,
-          canal,
-          cliente_nome: p.contato?.nome || '',
-          valor: parseFloat(p.total || p.totalVenda || 0),
-          status,
-          criado_em: p.data || new Date().toISOString(),
-        }, { onConflict: 'id_externo' });
-
-        if (STATUS_CONCLUIDO.includes(status)) totalSincronizados++;
-      }
-
-      pagina++;
-      await new Promise(r => setTimeout(r, 500));
-
-      if (pedidosBling.length < 100) continuar = false;
+    for (const p of pedidosBling) {
+      const canal = resolverCanal(p);
+      const status = resolverStatus(p.situacao);
+      await supabase.from('pedidos').upsert({
+        id_externo: `bling_${p.id}`,
+        canal,
+        cliente_nome: p.contato?.nome || '',
+        valor: parseFloat(p.total || p.totalVenda || 0),
+        status,
+        criado_em: p.data || new Date().toISOString(),
+      }, { onConflict: 'id_externo' });
+      if (STATUS_CONCLUIDO.includes(status)) totalSincronizados++;
     }
 
-    res.json({ sincronizados: totalSincronizados, paginas: pagina - 1 });
+    pagina++;
+    await new Promise(r => setTimeout(r, 500));
+    if (pedidosBling.length < 100) continuar = false;
+  }
+  return { sincronizados: totalSincronizados, paginas: pagina - 1 };
+}
+
+async function sincronizarBlingContatos() {
+  const token = await getBlingToken();
+  if (!token) throw new Error('Bling não autenticado');
+
+  let pagina = 1, atualizados = 0, criados = 0, continuar = true;
+
+  // Carrega clientes uma vez para todo o processo
+  const { data: todosClientes } = await supabase.from('clientes').select('id, nome, whatsapp, email');
+
+  while (continuar) {
+    const response = await axios.get('https://www.bling.com.br/Api/v3/contatos', {
+      headers: { Authorization: `Bearer ${token}` },
+      params: { pagina, limite: 100, situacao: 1 },
+    });
+    const contatos = response.data?.data || [];
+    if (!contatos.length) { continuar = false; break; }
+
+    for (const c of contatos) {
+      const tel = (c.celular || c.telefone || '').replace(/\D/g, '');
+      if (!tel) continue;
+
+      let wa = tel;
+      if (wa.startsWith('0')) wa = wa.slice(1);
+      if (!wa.startsWith('55') && wa.length <= 11) wa = '55' + wa;
+
+      const nomeNorm = normalizarNome(c.nome);
+      const existente = (todosClientes || []).find(x => normalizarNome(x.nome) === nomeNorm);
+
+      if (existente) {
+        if (!existente.whatsapp) {
+          await supabase.from('clientes').update({ whatsapp: wa, email: c.email || existente.email }).eq('id', existente.id);
+          existente.whatsapp = wa;
+          atualizados++;
+        }
+      } else {
+        await supabase.from('clientes').upsert({
+          nome: c.nome.trim(),
+          whatsapp: wa,
+          email: c.email || null,
+          canal: 'WhatsApp',
+          status: 'Ativo',
+          criado_em: new Date().toISOString(),
+        }, { onConflict: 'whatsapp' });
+        todosClientes.push({ nome: c.nome.trim(), whatsapp: wa, email: c.email || null });
+        criados++;
+      }
+    }
+
+    pagina++;
+    if (contatos.length < 100) continuar = false;
+    await new Promise(r => setTimeout(r, 400));
+  }
+  return { ok: true, atualizados, criados };
+}
+
+app.get('/api/bling/pedidos', async (req, res) => {
+  try {
+    const resultado = await sincronizarBlingPedidos();
+    res.json(resultado);
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao conectar com Bling: ' + err.message });
   }
@@ -832,60 +881,8 @@ app.get('/api/bling/lojas', async (req, res) => {
 // ============================================================
 app.get('/api/bling/contatos', async (req, res) => {
   try {
-    const token = await getBlingToken();
-    if (!token) return res.status(500).json({ erro: 'Bling não autenticado' });
-
-    let pagina = 1;
-    let continuar = true;
-    let atualizados = 0;
-    let criados = 0;
-
-    while (continuar) {
-      const response = await axios.get('https://www.bling.com.br/Api/v3/contatos', {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { pagina, limite: 100, situacao: 1 },
-      });
-      const contatos = response.data?.data || [];
-      if (!contatos.length) { continuar = false; break; }
-
-      for (const c of contatos) {
-        const tel = (c.celular || c.telefone || '').replace(/\D/g, '');
-        if (!tel) continue;
-
-        // Formata número brasileiro: garante prefixo 55
-        let wa = tel;
-        if (wa.startsWith('0')) wa = wa.slice(1);
-        if (!wa.startsWith('55') && wa.length <= 11) wa = '55' + wa;
-
-        // Busca cliente pelo nome normalizado (ignora acentos, case, espaços)
-        const { data: todosClientes } = await supabase.from('clientes').select('id, nome, whatsapp');
-        const nomeNorm = normalizarNome(c.nome);
-        const existente = (todosClientes || []).find(x => normalizarNome(x.nome) === nomeNorm);
-
-        if (existente) {
-          if (!existente.whatsapp) {
-            await supabase.from('clientes').update({ whatsapp: wa }).eq('id', existente.id);
-            atualizados++;
-          }
-        } else {
-          await supabase.from('clientes').upsert({
-            nome: c.nome.trim(),
-            whatsapp: wa,
-            email: c.email || null,
-            canal: 'WhatsApp',
-            status: 'Ativo',
-            criado_em: new Date().toISOString(),
-          }, { onConflict: 'whatsapp' });
-          criados++;
-        }
-      }
-
-      pagina++;
-      if (contatos.length < 100) continuar = false;
-      await new Promise(r => setTimeout(r, 400));
-    }
-
-    res.json({ ok: true, atualizados, criados });
+    const resultado = await sincronizarBlingContatos();
+    res.json(resultado);
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
@@ -1045,6 +1042,22 @@ app.post('/api/disparar-lista', async (req, res) => {
   }
   res.json({ enviados, total: clientes.length });
 });
+
+// ============================================================
+// SINCRONIZAÇÃO AUTOMÁTICA A CADA 6 HORAS
+// ============================================================
+const SEIS_HORAS = 6 * 60 * 60 * 1000;
+setInterval(async () => {
+  console.log('[Auto-sync] Iniciando sincronização automática Bling...');
+  try {
+    const rPedidos = await sincronizarBlingPedidos();
+    console.log(`[Auto-sync] Pedidos: ${rPedidos.sincronizados} sincronizados em ${rPedidos.paginas} páginas`);
+    const rContatos = await sincronizarBlingContatos();
+    console.log(`[Auto-sync] Contatos: ${rContatos.atualizados} atualizados, ${rContatos.criados} criados`);
+  } catch (err) {
+    console.error('[Auto-sync] Erro:', err.message);
+  }
+}, SEIS_HORAS);
 
 // ============================================================
 // INICIAR SERVIDOR
