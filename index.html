@@ -353,6 +353,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <thead><tr><th>Serviço</th><th>Função</th><th>Status</th><th>Ação</th></tr></thead>
       <tbody>
         <tr><td><strong>💬 Z-API / WhatsApp</strong></td><td>Bot de rotas + mensagens automáticas</td><td><span class="badge bg">✓ Conectado</span></td><td><button class="btn" onclick="testarWA()">Testar</button></td></tr>
+        <tr><td><strong>🔧 Normalizar Canais</strong></td><td>Converte pedidos "Site" e "Bling" para WhatsApp no banco</td><td><span class="badge ba">⚙️ Manutenção</span></td><td><button class="btn primary" onclick="normalizarCanais()">▶ Executar</button></td></tr>
         <tr><td><strong>🗄️ Supabase</strong></td><td>Banco de dados — salva tudo</td><td><span class="badge" id="st-supabase">⏳ Verificando</span></td><td>—</td></tr>
         <tr><td><strong>🟠 Bling ERP</strong></td><td>Pedidos, estoque, NF-e</td><td><span class="badge ba">⚙️ Configurar</span></td><td><button class="btn" onclick="openModal('bling')">Configurar</button></td></tr>
         <tr><td><strong>🛍️ WooCommerce</strong></td><td>Pedidos do site próprio</td><td><span class="badge ba">⚙️ Configurar</span></td><td><button class="btn" onclick="openModal('woo')">Configurar</button></td></tr>
@@ -1018,6 +1019,14 @@ async function exportarClientes() {
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'clientes.csv'; a.click();
   toast('✓ Exportado!');
+}
+
+async function normalizarCanais() {
+  if (!confirm('Converter todos os pedidos "Site" e "Bling" para WhatsApp no banco?')) return;
+  toast('⚙️ Normalizando canais...');
+  const r = await api('/api/admin/normalizar-canais', 'POST');
+  if (r?.ok) toast(`✓ ${r.atualizados} pedido(s) atualizados para WhatsApp`);
+  else toast('⚠ Erro ao normalizar');
 }
 
 async function testarWA() {
