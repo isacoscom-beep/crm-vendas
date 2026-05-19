@@ -433,10 +433,10 @@ app.get('/api/analytics/unica-compra', async (req, res) => {
     const mapa = agruparPorCliente(pedidos);
     const agora = new Date();
 
-    const { data: clientes } = await supabase.from('clientes').select('nome, whatsapp');
-    const mapaWA = {};
+    const { data: clientes } = await supabase.from('clientes').select('nome, whatsapp, email');
+    const mapaWA = {}, mapaEmail = {};
     for (const c of (clientes || [])) {
-      if (c.nome) mapaWA[normalizarNome(c.nome)] = c.whatsapp;
+      if (c.nome) { mapaWA[normalizarNome(c.nome)] = c.whatsapp; mapaEmail[normalizarNome(c.nome)] = c.email; }
     }
 
     const resultado = [];
@@ -449,6 +449,7 @@ app.get('/api/analytics/unica-compra', async (req, res) => {
       resultado.push({
         cliente: nome,
         whatsapp: wa,
+        email: mapaEmail[normalizarNome(nome)] || null,
         data_compra: dados.compras[0].split('T')[0],
         dias_desde_compra: diasDesde,
         total_gasto: parseFloat(dados.totalGasto.toFixed(2)),
@@ -471,10 +472,10 @@ app.get('/api/analytics/recorrentes', async (req, res) => {
     const mapa = agruparPorCliente(pedidos);
     const agora = new Date();
 
-    const { data: clientes } = await supabase.from('clientes').select('nome, whatsapp');
-    const mapaWA = {};
+    const { data: clientes } = await supabase.from('clientes').select('nome, whatsapp, email');
+    const mapaWA = {}, mapaEmail = {};
     for (const c of (clientes || [])) {
-      if (c.nome) mapaWA[normalizarNome(c.nome)] = c.whatsapp;
+      if (c.nome) { mapaWA[normalizarNome(c.nome)] = c.whatsapp; mapaEmail[normalizarNome(c.nome)] = c.email; }
     }
 
     const resultado = [];
@@ -501,6 +502,7 @@ app.get('/api/analytics/recorrentes', async (req, res) => {
       resultado.push({
         cliente: nome,
         whatsapp: wa,
+        email: mapaEmail[normalizarNome(nome)] || null,
         total_compras: datas.length,
         media_recorrencia_dias: mediaRecorrenciaDias,
         ultima_compra: ultimaCompra.toISOString().split('T')[0],

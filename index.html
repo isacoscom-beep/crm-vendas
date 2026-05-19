@@ -237,7 +237,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       </div>
     </div>
     <div class="tbl-wrap"><table class="tbl">
-      <thead><tr><th>Nome</th><th>Cidade</th><th>Contato</th><th>Canal</th><th>Último Pedido</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>Nome</th><th>Cidade</th><th>WhatsApp</th><th>Email</th><th>Canal</th><th>Último Pedido</th><th>Status</th><th></th></tr></thead>
       <tbody id="tbl-clientes"></tbody>
     </table></div>
     <div id="cli-empty" class="empty" style="display:none"><div class="ei">👥</div><p>Nenhum cliente encontrado.<br>Clique em "+ Novo" ou importe sua planilha.</p></div>
@@ -467,7 +467,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <button class="btn primary" onclick="dispararSegmento('rec')">📤 Enviar para todos filtrados</button>
       </div>
       <div class="tbl-wrap"><table class="tbl">
-        <thead><tr><th>Cliente</th><th>WhatsApp</th><th>Canais</th><th>Compras</th><th>Periodicidade</th><th>Última Compra</th><th>Próxima Est.</th><th>Status</th></tr></thead>
+        <thead><tr><th>Cliente</th><th>WhatsApp</th><th>Email</th><th>Canais</th><th>Compras</th><th>Periodicidade</th><th>Última Compra</th><th>Próxima Est.</th><th>Status</th></tr></thead>
         <tbody id="tbl-rec"></tbody>
       </table></div>
       <div id="rec-empty" class="empty" style="display:none"><div class="ei">🔄</div><p>Nenhum cliente recorrente encontrado com os filtros selecionados.</p></div>
@@ -493,7 +493,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <button class="btn primary" onclick="dispararSegmento('uni')">📤 Enviar para todos filtrados</button>
       </div>
       <div class="tbl-wrap"><table class="tbl">
-        <thead><tr><th>Cliente</th><th>WhatsApp</th><th>Canal</th><th>Data Compra</th><th>Dias s/ Comprar</th><th>Total Gasto</th></tr></thead>
+        <thead><tr><th>Cliente</th><th>WhatsApp</th><th>Email</th><th>Canal</th><th>Data Compra</th><th>Dias s/ Comprar</th><th>Total Gasto</th></tr></thead>
         <tbody id="tbl-uni"></tbody>
       </table></div>
       <div id="uni-empty" class="empty" style="display:none"><div class="ei">1️⃣</div><p>Nenhum cliente com compra única encontrado.</p></div>
@@ -638,7 +638,8 @@ function renderClientes() {
   tbody.innerHTML = filtered.map(c => `<tr>
     <td><strong>${c.nome}</strong></td>
     <td>${c.cidade || '—'}</td>
-    <td>${badgeContato(c)}</td>
+    <td>${c.whatsapp ? `<span class="badge bg">WA</span> <span style="font-size:10px;color:var(--text3)">${formatWA(c.whatsapp)}</span>` : '<span class="badge bgr">—</span>'}</td>
+    <td>${c.email ? `<span class="badge bb">Email</span> <span style="font-size:10px;color:var(--text3)">${c.email}</span>` : '<span class="badge bgr">—</span>'}</td>
     <td>${badgeCanal(c.canal)}</td>
     <td>${c.ultimo_pedido ? new Date(c.ultimo_pedido + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}</td>
     <td>${badgeStatus(c.status)}</td>
@@ -1222,8 +1223,9 @@ async function loadRecorrentes() {
     const sb = c.status_recorrencia === 'atrasado' ? 'br' : c.status_recorrencia === 'proximo' ? 'ba' : 'bg';
     const sl = c.status_recorrencia === 'atrasado' ? 'Atrasado' : c.status_recorrencia === 'proximo' ? 'Próximo' : 'Em dia';
     return `<tr style="${!c.whatsapp ? 'opacity:.5' : ''}">
-      <td><strong>${c.cliente}</strong>${!c.whatsapp ? ' <span class="badge bgr" style="font-size:9px">Sem WhatsApp</span>' : ''}</td>
-      <td style="font-family:'DM Mono',monospace;font-size:11px">${c.whatsapp ? formatWA(c.whatsapp) : '—'}</td>
+      <td><strong>${c.cliente}</strong></td>
+      <td>${c.whatsapp ? `<span class="badge bg">WA</span> <span style="font-size:10px;color:var(--text3)">${formatWA(c.whatsapp)}</span>` : '<span class="badge bgr">—</span>'}</td>
+      <td>${c.email ? `<span class="badge bb">Email</span> <span style="font-size:10px;color:var(--text3)">${c.email}</span>` : '<span class="badge bgr">—</span>'}</td>
       <td>${(c.canais||[]).map(ch => badgeCanal(ch)).join(' ')}</td>
       <td>${c.total_compras}</td>
       <td>A cada ${c.media_recorrencia_dias}d</td>
@@ -1248,8 +1250,9 @@ async function loadUnicaCompra() {
   if (!listaUni.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
   empty.style.display = 'none';
   tbody.innerHTML = listaUni.map(c => `<tr style="${!c.whatsapp ? 'opacity:.5' : ''}">
-    <td><strong>${c.cliente}</strong>${!c.whatsapp ? ' <span class="badge bgr" style="font-size:9px">Sem WhatsApp</span>' : ''}</td>
-    <td style="font-family:'DM Mono',monospace;font-size:11px">${c.whatsapp ? formatWA(c.whatsapp) : '—'}</td>
+    <td><strong>${c.cliente}</strong></td>
+    <td>${c.whatsapp ? `<span class="badge bg">WA</span> <span style="font-size:10px;color:var(--text3)">${formatWA(c.whatsapp)}</span>` : '<span class="badge bgr">—</span>'}</td>
+    <td>${c.email ? `<span class="badge bb">Email</span> <span style="font-size:10px;color:var(--text3)">${c.email}</span>` : '<span class="badge bgr">—</span>'}</td>
     <td>${(c.canais||[]).map(ch => badgeCanal(ch)).join(' ')}</td>
     <td>${c.data_compra ? new Date(c.data_compra+'T12:00:00').toLocaleDateString('pt-BR') : '—'}</td>
     <td>${c.dias_desde_compra}d</td>
