@@ -488,6 +488,36 @@ app.get('/api/bling/pedidos', async (req, res) => {
 });
 
 // ============================================================
+// BLING — Debug: mostra dados brutos dos pedidos para diagnóstico
+// ============================================================
+app.get('/api/bling/debug', async (req, res) => {
+  try {
+    const token = await getBlingToken();
+    if (!token) return res.status(500).json({ erro: 'Bling não autenticado' });
+    const response = await axios.get('https://www.bling.com.br/Api/v3/pedidos/vendas', {
+      headers: { Authorization: `Bearer ${token}` },
+      params: { pagina: 1, limite: 10 }
+    });
+    const pedidos = response.data?.data || [];
+    res.json(pedidos.map(p => ({
+      id: p.id,
+      loja_nome: p.loja?.nome,
+      loja_id: p.loja?.id,
+      numeroPedidoLoja: p.numeroPedidoLoja,
+      situacao_id: p.situacao?.id,
+      situacao_valor: p.situacao?.valor,
+      total: p.total,
+      totalVenda: p.totalVenda,
+      contato: p.contato?.nome,
+      canal_detectado: resolverCanal(p),
+      status_detectado: resolverStatus(p.situacao),
+    })));
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// ============================================================
 // BLING — Callback OAuth (autorização inicial)
 // ============================================================
 app.get('/bling/auth', (req, res) => {
