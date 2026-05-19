@@ -177,6 +177,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="sb-sec">Análise</div>
   <div class="sb-item" onclick="nav('relatorios',this)"><span class="ico">📈</span>Relatórios</div>
   <div class="sb-item" onclick="nav('estrategia',this)"><span class="ico">🎯</span>Estratégia</div>
+  <div class="sb-item" onclick="nav('notificacoes',this)"><span class="ico">🔔</span>Notificações <span class="sb-badge" id="badge-notif" style="display:none">0</span></div>
   <div class="sb-sec">Config</div>
   <div class="sb-item" onclick="importarCSV()"><span class="ico">📥</span>Importar Planilha</div>
   <div class="sb-item" onclick="exportarClientes()"><span class="ico">📤</span>Exportar Dados</div>
@@ -403,6 +404,36 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   </div>
 </div>
 
+<!-- NOTIFICAÇÕES -->
+<div id="page-notificacoes" class="page">
+  <div class="g4" style="margin-bottom:16px" id="notif-metrics">
+    <div class="metric"><div class="lbl">Pendentes</div><div class="val dn" id="nmet-pendente">—</div></div>
+    <div class="metric"><div class="lbl">Enviadas</div><div class="val up" id="nmet-enviada">—</div></div>
+    <div class="metric"><div class="lbl">Rejeitadas</div><div class="val" id="nmet-rejeitada" style="color:var(--text3)">—</div></div>
+    <div class="metric"><div class="lbl">Total</div><div class="val" id="nmet-total">—</div></div>
+  </div>
+  <div class="card">
+    <div class="card-hdr">
+      <span class="card-title">Fila de Aprovação</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <select id="notif-filtro" class="btn" onchange="filtrarNotif(this.value)">
+          <option value="pendente">Pendentes</option>
+          <option value="enviada">Enviadas</option>
+          <option value="rejeitada">Rejeitadas</option>
+          <option value="">Todas</option>
+        </select>
+        <button class="btn success" onclick="gerarNotificacoes()">⚡ Gerar Novas Sugestões</button>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.6">O sistema analisa seus clientes e sugere mensagens automáticas. Revise, edite se quiser e aprove para enviar.</p>
+    <div id="notif-list"></div>
+    <div id="notif-empty" class="empty" style="display:none">
+      <div class="ei">🔔</div>
+      <p>Nenhuma notificação pendente.<br>Clique em <strong>"⚡ Gerar Novas Sugestões"</strong> para analisar clientes e criar sugestões de contato.</p>
+    </div>
+  </div>
+</div>
+
 </div><!-- /main -->
 </div><!-- /app -->
 
@@ -429,6 +460,7 @@ const pageActions = {
   integracoes:{ title:'Integrações', btn:'', modal:'' },
   relatorios:{ title:'Relatórios', btn:'', modal:'' },
   estrategia:{ title:'Estratégia', btn:'', modal:'' },
+  notificacoes:{ title:'Notificações', btn:'', modal:'' },
 };
 
 function nav(id, el) {
@@ -453,6 +485,7 @@ function renderPage(id) {
   else if (id === 'marketplaces') loadPedidos();
   else if (id === 'relatorios') loadRelatorios();
   else if (id === 'estrategia') loadEstrategia();
+  else if (id === 'notificacoes') loadNotificacoes();
 }
 
 // ── API HELPER ───────────────────────────────────────────────
@@ -926,8 +959,124 @@ function badgeCanal(c) { const m={WhatsApp:'bg',Site:'bb',Google:'bb','Mercado L
 function badgeStatus(s) { const m={Ativo:'bg',Seguimento:'ba',Inativo:'bgr',Pendente:'ba',Recebido:'bg',Urgente:'br',Processando:'ba',Preparando:'bb',Enviado:'bg',Entregue:'bg',Cancelado:'br',Fechado:'bg'}; return `<span class="badge ${m[s]||'bgr'}">${s||'—'}</span>`; }
 function toast(msg, dur=3500) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),dur); }
 
+// ── NOTIFICAÇÕES ─────────────────────────────────────────────
+async function loadNotificacoes() {
+  await filtrarNotif('pendente');
+  document.getElementById('notif-filtro').value = 'pendente';
+  await atualizarBadgeNotif();
+}
+
+async function atualizarBadgeNotif() {
+  const data = await api('/api/notificacoes?status=pendente') || [];
+  const badge = document.getElementById('badge-notif');
+  if (badge) { badge.textContent = data.length; badge.style.display = data.length > 0 ? '' : 'none'; }
+}
+
+async function gerarNotificacoes() {
+  toast('⚡ Analisando clientes...');
+  const r = await api('/api/notificacoes/gerar', 'POST');
+  if (r) {
+    toast(`✓ ${r.geradas} novas sugestões geradas de ${r.total_analisados} clientes analisados`);
+    await filtrarNotif('pendente');
+    document.getElementById('notif-filtro').value = 'pendente';
+    atualizarBadgeNotif();
+  }
+}
+
+async function filtrarNotif(status) {
+  const path = '/api/notificacoes' + (status ? '?status=' + status : '');
+  const notifs = await api(path) || [];
+
+  const todos = await api('/api/notificacoes') || [];
+  const pendentes = todos.filter(n => n.status === 'pendente').length;
+  const enviadas = todos.filter(n => n.status === 'enviada').length;
+  const rejeitadas = todos.filter(n => n.status === 'rejeitada').length;
+  const pelEl = document.getElementById('nmet-pendente'); if (pelEl) pelEl.textContent = pendentes;
+  const senEl = document.getElementById('nmet-enviada'); if (senEl) senEl.textContent = enviadas;
+  const rejEl = document.getElementById('nmet-rejeitada'); if (rejEl) rejEl.textContent = rejeitadas;
+  const totEl = document.getElementById('nmet-total'); if (totEl) totEl.textContent = todos.length;
+
+  const tipoInfo = {
+    inativo: { label: 'Inativo 60+ dias', badge: 'br' },
+    unica_compra: { label: 'Compra única', badge: 'bb' },
+    recorrente_proximo: { label: 'Compra próxima', badge: 'bg' },
+    recorrente_atrasado: { label: 'Recorrência atrasada', badge: 'ba' },
+  };
+
+  const list = document.getElementById('notif-list');
+  const empty = document.getElementById('notif-empty');
+  if (!notifs.length) { list.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+
+  list.innerHTML = notifs.map(n => {
+    const t = tipoInfo[n.tipo] || { label: n.tipo, badge: 'bgr' };
+    const msg = n.mensagem_editada || n.mensagem;
+    const isPendente = n.status === 'pendente';
+    const semWA = !n.cliente_whatsapp;
+    const statusLabel = n.status === 'pendente' ? 'Pendente' : n.status === 'enviada' ? 'Enviado' : n.status === 'rejeitada' ? 'Cancelado' : n.status;
+    return `<div style="border:1px solid var(--border);border-radius:var(--radius2);padding:16px 18px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+            <strong style="font-size:13px">${n.cliente_nome}</strong>
+            <span class="badge ${t.badge}">${t.label}</span>
+            ${badgeStatus(statusLabel)}
+          </div>
+          <div style="font-size:11px;color:var(--text3)">
+            ${n.dias_sem_comprar ? `${n.dias_sem_comprar} dias sem comprar · ` : ''}${n.total_compras ? `${n.total_compras} compra(s) · ` : ''}${n.total_gasto ? `R$${parseFloat(n.total_gasto).toLocaleString('pt-BR',{minimumFractionDigits:2})} no total` : ''}
+          </div>
+          ${n.ultima_compra ? `<div style="font-size:10px;color:var(--text3)">Última compra: ${new Date(n.ultima_compra + 'T12:00:00').toLocaleDateString('pt-BR')}${n.proxima_compra_estimada ? ' · Próxima estimada: ' + new Date(n.proxima_compra_estimada + 'T12:00:00').toLocaleDateString('pt-BR') : ''}</div>` : ''}
+        </div>
+        ${n.enviado_em ? `<div style="font-size:10px;color:var(--text3);text-align:right;white-space:nowrap">Enviado<br>${new Date(n.enviado_em).toLocaleDateString('pt-BR')}</div>` : ''}
+      </div>
+      ${isPendente && semWA ? `<div style="background:var(--amber2);border:1px solid var(--amber);border-radius:var(--radius);padding:8px 12px;margin-bottom:10px;font-size:12px;color:var(--amber)">⚠ Cliente sem WhatsApp cadastrado
+        <div style="margin-top:6px;display:flex;gap:6px"><input id="wa-input-${n.id}" placeholder="5519999999999" style="flex:1;border-radius:var(--radius);border:1px solid var(--border2);padding:5px 9px;font-size:12px;font-family:'DM Sans',sans-serif"><button class="btn" style="font-size:11px" onclick="salvarWANotif('${n.id}')">Salvar</button></div>
+      </div>` : ''}
+      ${isPendente ? `<div style="margin-bottom:10px">
+        <div style="font-size:10px;font-weight:600;color:var(--text3);margin-bottom:5px">MENSAGEM (edite antes de enviar)</div>
+        <textarea id="msg-${n.id}" style="width:100%;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2);padding:8px 11px;font-family:'DM Sans',sans-serif;resize:vertical;min-height:80px">${msg}</textarea>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn danger" onclick="rejeitarNotif('${n.id}')">✕ Rejeitar</button>
+        <button class="btn ${semWA ? '' : 'primary'}" ${semWA ? 'disabled style="opacity:.5;cursor:not-allowed"' : `onclick="aprovarNotif('${n.id}')"`}>📤 Aprovar e Enviar</button>
+      </div>` : `<div style="background:var(--bg3);border-radius:var(--radius);padding:10px 12px;font-size:12px;color:var(--text2);line-height:1.5">${msg}</div>`}
+    </div>`;
+  }).join('');
+}
+
+async function aprovarNotif(id) {
+  const textarea = document.getElementById('msg-' + id);
+  if (textarea?.value) await api('/api/notificacoes/' + id, 'PUT', { mensagem_editada: textarea.value });
+  toast('📤 Enviando mensagem...');
+  const r = await api('/api/notificacoes/' + id + '/aprovar', 'POST');
+  if (r?.ok) {
+    toast('✓ Mensagem enviada com sucesso!');
+    filtrarNotif(document.getElementById('notif-filtro')?.value || 'pendente');
+    atualizarBadgeNotif();
+  } else {
+    toast('⚠ Erro ao enviar: ' + (r?.erro || 'verifique a conexão WhatsApp'));
+  }
+}
+
+async function rejeitarNotif(id) {
+  await api('/api/notificacoes/' + id + '/rejeitar', 'POST');
+  toast('Notificação rejeitada');
+  filtrarNotif(document.getElementById('notif-filtro')?.value || 'pendente');
+  atualizarBadgeNotif();
+}
+
+async function salvarWANotif(id) {
+  const input = document.getElementById('wa-input-' + id);
+  const wa = input?.value?.replace(/\D/g, '');
+  if (!wa || wa.length < 10) { toast('⚠ Número inválido (use formato: 5519999999999)'); return; }
+  await api('/api/notificacoes/' + id, 'PUT', { cliente_whatsapp: wa });
+  toast('✓ WhatsApp salvo');
+  filtrarNotif(document.getElementById('notif-filtro')?.value || 'pendente');
+}
+
 // ── INIT ─────────────────────────────────────────────────────
 loadDashboard();
+atualizarBadgeNotif();
 // Verifica conexão com Supabase
 api('/api/dashboard').then(r => {
   const el = document.getElementById('st-supabase');

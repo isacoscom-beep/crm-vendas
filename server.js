@@ -498,6 +498,145 @@ app.get('/api/analytics/recorrentes', async (req, res) => {
 });
 
 // ============================================================
+// NOTIFICAÇÕES — Fila de aprovação de mensagens automáticas
+// ============================================================
+
+app.post('/api/notificacoes/gerar', async (req, res) => {
+  try {
+    const pedidos = await buscarTodosPedidos();
+    const mapa = agruparPorCliente(pedidos);
+    const agora = new Date();
+
+    const { data: clientes } = await supabase.from('clientes').select('nome, whatsapp').not('whatsapp', 'is', null);
+    const mapaWA = {};
+    for (const c of (clientes || [])) {
+      if (c.nome) mapaWA[c.nome.trim().toLowerCase()] = c.whatsapp;
+    }
+
+    const candidatas = [];
+
+    for (const [nome, dados] of Object.entries(mapa)) {
+      const ultimaCompra = new Date(dados.compras[dados.compras.length - 1]);
+      const diasSemComprar = Math.floor((agora - ultimaCompra) / 86400000);
+      const wa = mapaWA[nome.toLowerCase()] || null;
+      const primeiroNome = nome.split(' ')[0];
+
+      if (dados.compras.length === 1 && diasSemComprar >= 30) {
+        candidatas.push({
+          tipo: 'unica_compra',
+          cliente_nome: nome,
+          cliente_whatsapp: wa,
+          mensagem: `Olá ${primeiroNome}! 😊 Faz um tempo que não te vemos por aqui. Temos novidades e produtos fresquinhos esperando por você! Quer dar uma olhada? 🌿`,
+          dias_sem_comprar: diasSemComprar,
+          total_compras: 1,
+          total_gasto: parseFloat(dados.totalGasto.toFixed(2)),
+          ultima_compra: ultimaCompra.toISOString().split('T')[0],
+          status: 'pendente',
+          criado_em: new Date().toISOString(),
+          atualizado_em: new Date().toISOString(),
+        });
+      } else if (dados.compras.length >= 2) {
+        const datas = dados.compras.map(d => new Date(d)).sort((a, b) => a - b);
+        let totalDias = 0;
+        for (let i = 1; i < datas.length; i++) totalDias += (datas[i] - datas[i - 1]) / 86400000;
+        const mediaRecorrenciaDias = Math.round(totalDias / (datas.length - 1));
+        const proximaEstimada = new Date(ultimaCompra.getTime() + mediaRecorrenciaDias * 86400000);
+        const diasParaProxima = Math.floor((proximaEstimada - agora) / 86400000);
+
+        if (diasParaProxima >= -7 && diasParaProxima <= 7) {
+          const tipo = diasParaProxima < 0 ? 'recorrente_atrasado' : 'recorrente_proximo';
+          const mensagem = diasParaProxima < 0
+            ? `Olá ${primeiroNome}! 😊 Pela sua frequência de compras, você costuma pedir a cada ${mediaRecorrenciaDias} dias. Está na hora de repor! Posso te ajudar? 🌿`
+            : `Olá ${primeiroNome}! 😊 Pelos seus hábitos de compra, você vai precisar de produtos em breve. Já posso separar alguma coisa para você? 🌿`;
+          candidatas.push({
+            tipo,
+            cliente_nome: nome,
+            cliente_whatsapp: wa,
+            mensagem,
+            dias_sem_comprar: diasSemComprar,
+            total_compras: datas.length,
+            total_gasto: parseFloat(dados.totalGasto.toFixed(2)),
+            ultima_compra: ultimaCompra.toISOString().split('T')[0],
+            proxima_compra_estimada: proximaEstimada.toISOString().split('T')[0],
+            status: 'pendente',
+            criado_em: new Date().toISOString(),
+            atualizado_em: new Date().toISOString(),
+          });
+        } else if (diasSemComprar >= 60) {
+          candidatas.push({
+            tipo: 'inativo',
+            cliente_nome: nome,
+            cliente_whatsapp: wa,
+            mensagem: `Olá ${primeiroNome}! 😊 Sentimos sua falta! Faz ${diasSemComprar} dias desde sua última compra. Temos novidades que você vai adorar! Que tal fazermos um pedido? 🌿`,
+            dias_sem_comprar: diasSemComprar,
+            total_compras: datas.length,
+            total_gasto: parseFloat(dados.totalGasto.toFixed(2)),
+            ultima_compra: ultimaCompra.toISOString().split('T')[0],
+            status: 'pendente',
+            criado_em: new Date().toISOString(),
+            atualizado_em: new Date().toISOString(),
+          });
+        }
+      }
+    }
+
+    const { data: existentes } = await supabase.from('notificacoes').select('cliente_nome').eq('status', 'pendente');
+    const nomesExistentes = new Set((existentes || []).map(n => n.cliente_nome));
+    const novas = candidatas.filter(n => !nomesExistentes.has(n.cliente_nome));
+
+    if (novas.length > 0) await supabase.from('notificacoes').insert(novas);
+
+    res.json({ geradas: novas.length, total_analisados: Object.keys(mapa).length });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.get('/api/notificacoes', async (req, res) => {
+  const { status } = req.query;
+  let query = supabase.from('notificacoes').select('*').order('criado_em', { ascending: false });
+  if (status) query = query.eq('status', status);
+  const { data, error } = await query;
+  if (error) return res.status(500).json({ erro: error.message });
+  res.json(data || []);
+});
+
+app.put('/api/notificacoes/:id', async (req, res) => {
+  const { data, error } = await supabase.from('notificacoes')
+    .update({ ...req.body, atualizado_em: new Date().toISOString() })
+    .eq('id', req.params.id).select().single();
+  if (error) return res.status(500).json({ erro: error.message });
+  res.json(data);
+});
+
+app.post('/api/notificacoes/:id/aprovar', async (req, res) => {
+  const { data: notif, error } = await supabase.from('notificacoes').select('*').eq('id', req.params.id).single();
+  if (error || !notif) return res.status(404).json({ erro: 'Notificação não encontrada' });
+  if (!notif.cliente_whatsapp) return res.status(400).json({ erro: 'Cliente sem WhatsApp cadastrado' });
+
+  const mensagem = notif.mensagem_editada || notif.mensagem;
+  const resultado = await enviarWhatsapp(notif.cliente_whatsapp, mensagem);
+
+  const novoStatus = resultado.ok ? 'enviada' : 'erro';
+  await supabase.from('notificacoes').update({
+    status: novoStatus,
+    enviado_em: resultado.ok ? new Date().toISOString() : null,
+    atualizado_em: new Date().toISOString(),
+  }).eq('id', req.params.id);
+
+  if (resultado.ok) res.json({ ok: true });
+  else res.status(500).json({ erro: resultado.erro });
+});
+
+app.post('/api/notificacoes/:id/rejeitar', async (req, res) => {
+  const { data, error } = await supabase.from('notificacoes')
+    .update({ status: 'rejeitada', atualizado_em: new Date().toISOString() })
+    .eq('id', req.params.id).select().single();
+  if (error) return res.status(500).json({ erro: error.message });
+  res.json(data);
+});
+
+// ============================================================
 // INTEGRAÇÃO BLING — OAuth 2.0
 // ============================================================
 let blingAccessToken = null;
