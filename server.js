@@ -820,6 +820,72 @@ app.get('/api/bling/lojas', async (req, res) => {
 });
 
 // ============================================================
+// BLING — Importar contatos (nome + telefone/celular) para clientes
+// ============================================================
+app.get('/api/bling/contatos', async (req, res) => {
+  try {
+    const token = await getBlingToken();
+    if (!token) return res.status(500).json({ erro: 'Bling não autenticado' });
+
+    let pagina = 1;
+    let continuar = true;
+    let atualizados = 0;
+    let criados = 0;
+
+    while (continuar) {
+      const response = await axios.get('https://www.bling.com.br/Api/v3/contatos', {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { pagina, limite: 100, situacao: 1 },
+      });
+      const contatos = response.data?.data || [];
+      if (!contatos.length) { continuar = false; break; }
+
+      for (const c of contatos) {
+        const tel = (c.celular || c.telefone || '').replace(/\D/g, '');
+        if (!tel) continue;
+
+        // Formata número brasileiro: garante prefixo 55
+        let wa = tel;
+        if (wa.startsWith('0')) wa = wa.slice(1);
+        if (!wa.startsWith('55') && wa.length <= 11) wa = '55' + wa;
+
+        // Tenta encontrar cliente pelo nome (case-insensitive)
+        const { data: existente } = await supabase
+          .from('clientes')
+          .select('id, whatsapp')
+          .ilike('nome', c.nome.trim())
+          .maybeSingle();
+
+        if (existente) {
+          if (!existente.whatsapp) {
+            await supabase.from('clientes').update({ whatsapp: wa }).eq('id', existente.id);
+            atualizados++;
+          }
+        } else {
+          await supabase.from('clientes').upsert({
+            nome: c.nome.trim(),
+            whatsapp: wa,
+            email: c.email || null,
+            canal: 'WhatsApp',
+            status: 'Ativo',
+            criado_em: new Date().toISOString(),
+          }, { onConflict: 'whatsapp' });
+          criados++;
+        }
+      }
+
+      pagina++;
+      if (contatos.length < 100) continuar = false;
+      await new Promise(r => setTimeout(r, 400));
+    }
+
+    res.json({ ok: true, atualizados, criados });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// ============================================================
 // BLING — Debug: mostra dados brutos dos pedidos para diagnóstico
 // ============================================================
 app.get('/api/bling/debug', async (req, res) => {
