@@ -373,26 +373,42 @@ let blingAccessToken = null;
 let blingTokenExpiry = null;
 
 async function getBlingToken() {
-  // Tenta usar token salvo no Supabase (refresh token)
   if (blingAccessToken && blingTokenExpiry > Date.now()) return blingAccessToken;
   try {
-    const { data: cfg } = await supabase.from('configuracoes').select('valor').eq('chave', 'bling_refresh_token').single();
-    if (cfg?.valor) {
-      const credentials = Buffer.from(`${process.env.BLING_CLIENT_ID}:${process.env.BLING_CLIENT_SECRET}`).toString('base64');
-      const response = await axios.post('https://www.bling.com.br/Api/v3/oauth/token',
-        `grant_type=refresh_token&refresh_token=${cfg.valor}`,
-        { headers: { Authorization: `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
-      );
-      blingAccessToken = response.data.access_token;
-      blingTokenExpiry = Date.now() + (response.data.expires_in * 1000);
-      // Atualiza refresh token
-      await supabase.from('configuracoes').upsert({ chave: 'bling_refresh_token', valor: response.data.refresh_token });
-      return blingAccessToken;
-    }
+    const { data: cfg } = await supabase
+      .from('configuracoes')
+      .select('valor')
+      .eq('chave', 'bling_refresh_token')
+      .single();
+    
+    if (!cfg?.valor) return null;
+
+    const credentials = Buffer.from(
+      `${process.env.BLING_CLIENT_ID}:${process.env.BLING_CLIENT_SECRET}`
+    ).toString('base64');
+
+    const response = await axios.post(
+      'https://www.bling.com.br/Api/v3/oauth/token',
+      `grant_type=refresh_token&refresh_token=${cfg.valor}`,
+      { headers: { 
+        Authorization: `Basic ${credentials}`, 
+        'Content-Type': 'application/x-www-form-urlencoded' 
+      }}
+    );
+
+    blingAccessToken = response.data.access_token;
+    blingTokenExpiry = Date.now() + (response.data.expires_in * 1000);
+
+    await supabase.from('configuracoes').upsert({ 
+      chave: 'bling_refresh_token', 
+      valor: response.data.refresh_token 
+    });
+
+    return blingAccessToken;
   } catch (err) {
     console.error('Erro ao renovar token Bling:', err.message);
+    return null;
   }
-  return null;
 }
 
 // ============================================================
