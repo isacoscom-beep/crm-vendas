@@ -354,6 +354,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <tbody>
         <tr><td><strong>💬 Z-API / WhatsApp</strong></td><td>Bot de rotas + mensagens automáticas</td><td><span class="badge bg">✓ Conectado</span></td><td><button class="btn" onclick="testarWA()">Testar</button></td></tr>
         <tr><td><strong>🔧 Normalizar Canais</strong></td><td>Converte pedidos "Site" e "Bling" para WhatsApp no banco</td><td><span class="badge ba">⚙️ Manutenção</span></td><td><button class="btn primary" onclick="normalizarCanais()">▶ Executar</button></td></tr>
+        <tr><td><strong>🔄 Corrigir Status Bling</strong></td><td>Revalida o status de pedidos "Atendido" diretamente no Bling e corrige inconsistências</td><td><span class="badge ba">⚙️ Manutenção</span></td><td><button class="btn primary" onclick="corrigirStatusBling()">▶ Executar</button></td></tr>
         <tr><td><strong>🗄️ Supabase</strong></td><td>Banco de dados — salva tudo</td><td><span class="badge" id="st-supabase">⏳ Verificando</span></td><td>—</td></tr>
         <tr><td><strong>🟠 Bling ERP</strong></td><td>Pedidos, estoque, NF-e</td><td><span class="badge ba">⚙️ Configurar</span></td><td style="display:flex;gap:6px"><button class="btn" onclick="openModal('bling')">Configurar</button><button class="btn success" onclick="sincContatosBling()">👥 Importar Contatos</button></td></tr>
         <tr><td><strong>🛍️ WooCommerce</strong></td><td>Pedidos do site próprio</td><td><span class="badge ba">⚙️ Configurar</span></td><td><button class="btn" onclick="openModal('woo')">Configurar</button></td></tr>
@@ -1039,6 +1040,14 @@ async function sincContatosBling() {
   const r = await api('/api/bling/contatos');
   if (r?.ok) toast(`✓ ${r.atualizados} cliente(s) atualizados com WhatsApp · ${r.criados} novo(s) criado(s)`);
   else toast('⚠ Erro ao importar contatos: ' + (r?.erro || 'verifique a conexão com o Bling'));
+}
+
+async function corrigirStatusBling() {
+  if (!confirm('Verificar e corrigir status de pedidos "Atendido" consultando o Bling? Isso pode demorar alguns minutos.')) return;
+  toast('🔄 Corrigindo status...');
+  const r = await api('/api/admin/corrigir-status-bling', 'POST');
+  if (r?.ok) { toast(`✓ ${r.corrigidos} pedido(s) corrigido(s) de ${r.verificados} verificados`); loadPedidos(); }
+  else toast('⚠ Erro ao corrigir status');
 }
 
 async function normalizarCanais() {
