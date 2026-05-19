@@ -1031,6 +1031,20 @@ app.post('/api/disparar', async (req, res) => {
 // ============================================================
 // MIGRAÇÃO — Normaliza canais "Site" e "Bling" para "WhatsApp"
 // ============================================================
+app.get('/api/debug/bling-pedido/:id', async (req, res) => {
+  try {
+    const token = await getBlingToken();
+    if (!token) return res.status(500).json({ erro: 'Bling não autenticado' });
+    const response = await axios.get(`https://www.bling.com.br/Api/v3/pedidos/vendas/${req.params.id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const p = response.data?.data;
+    res.json({ id: p?.id, situacao: p?.situacao, status_resolvido: resolverStatus(p?.situacao), contato: p?.contato?.nome, total: p?.total, data: p?.data });
+  } catch (err) {
+    res.status(500).json({ erro: err.message, detalhes: err.response?.data });
+  }
+});
+
 app.get('/api/debug/pedidos', async (req, res) => {
   const { nome } = req.query;
   let query = supabase.from('pedidos').select('id, id_externo, cliente_nome, status, valor, criado_em, canal').order('criado_em', { ascending: false }).limit(50);
