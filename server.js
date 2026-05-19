@@ -444,7 +444,6 @@ app.get('/api/analytics/unica-compra', async (req, res) => {
       if (dados.compras.length !== 1) continue;
       if (canal && !dados.canais.has(canal)) continue;
       const wa = mapaWA[nome.toLowerCase()] || null;
-      if (!wa) continue;
       const dataCompra = new Date(dados.compras[0]);
       const diasDesde = Math.floor((agora - dataCompra) / 86400000);
       resultado.push({
@@ -483,7 +482,6 @@ app.get('/api/analytics/recorrentes', async (req, res) => {
       if (dados.compras.length < 2) continue;
       if (canal && !dados.canais.has(canal)) continue;
       const wa = mapaWA[nome.toLowerCase()] || null;
-      if (!wa) continue;
 
       const datas = dados.compras.map(d => new Date(d)).sort((a, b) => a - b);
       let totalDias = 0;

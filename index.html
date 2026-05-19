@@ -1186,12 +1186,14 @@ async function loadRecorrentes() {
   document.getElementById('seg-rec-count').textContent = `${dadosRec.length} cliente(s) encontrado(s)`;
   if (!dadosRec.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
   empty.style.display = 'none';
+  const comWA = dadosRec.filter(c => c.whatsapp).length;
+  document.getElementById('seg-rec-count').textContent = `${dadosRec.length} cliente(s) — ${comWA} com WhatsApp`;
   tbody.innerHTML = dadosRec.map(c => {
     const sb = c.status_recorrencia === 'atrasado' ? 'br' : c.status_recorrencia === 'proximo' ? 'ba' : 'bg';
     const sl = c.status_recorrencia === 'atrasado' ? 'Atrasado' : c.status_recorrencia === 'proximo' ? 'Próximo' : 'Em dia';
-    return `<tr>
-      <td><strong>${c.cliente}</strong></td>
-      <td style="font-family:'DM Mono',monospace;font-size:11px">${formatWA(c.whatsapp)}</td>
+    return `<tr style="${!c.whatsapp ? 'opacity:.5' : ''}">
+      <td><strong>${c.cliente}</strong>${!c.whatsapp ? ' <span class="badge bgr" style="font-size:9px">Sem WA</span>' : ''}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px">${c.whatsapp ? formatWA(c.whatsapp) : '—'}</td>
       <td>${(c.canais||[]).map(ch => badgeCanal(ch)).join(' ')}</td>
       <td>${c.total_compras}</td>
       <td>A cada ${c.media_recorrencia_dias}d</td>
@@ -1209,12 +1211,13 @@ async function loadUnicaCompra() {
   dadosUni = r?.clientes || [];
   const tbody = document.getElementById('tbl-uni');
   const empty = document.getElementById('uni-empty');
-  document.getElementById('seg-uni-count').textContent = `${dadosUni.length} cliente(s) encontrado(s)`;
+  const comWAUni = dadosUni.filter(c => c.whatsapp).length;
+  document.getElementById('seg-uni-count').textContent = `${dadosUni.length} cliente(s) — ${comWAUni} com WhatsApp`;
   if (!dadosUni.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
   empty.style.display = 'none';
-  tbody.innerHTML = dadosUni.map(c => `<tr>
-    <td><strong>${c.cliente}</strong></td>
-    <td style="font-family:'DM Mono',monospace;font-size:11px">${formatWA(c.whatsapp)}</td>
+  tbody.innerHTML = dadosUni.map(c => `<tr style="${!c.whatsapp ? 'opacity:.5' : ''}">
+    <td><strong>${c.cliente}</strong>${!c.whatsapp ? ' <span class="badge bgr" style="font-size:9px">Sem WA</span>' : ''}</td>
+    <td style="font-family:'DM Mono',monospace;font-size:11px">${c.whatsapp ? formatWA(c.whatsapp) : '—'}</td>
     <td>${(c.canais||[]).map(ch => badgeCanal(ch)).join(' ')}</td>
     <td>${c.data_compra ? new Date(c.data_compra+'T12:00:00').toLocaleDateString('pt-BR') : '—'}</td>
     <td>${c.dias_desde_compra}d</td>
@@ -1227,10 +1230,12 @@ async function dispararSegmento(tipo) {
   const mensagem = document.getElementById('msg-' + tipo)?.value?.trim();
   if (!dados.length) { toast('⚠ Nenhum cliente na lista atual'); return; }
   if (!mensagem) { toast('⚠ Escreva a mensagem antes de enviar'); return; }
-  if (!confirm(`Enviar mensagem para ${dados.length} cliente(s)?`)) return;
-  toast(`📤 Enviando para ${dados.length} clientes...`, 8000);
+  const comWA = dados.filter(c => c.whatsapp);
+  if (!comWA.length) { toast('⚠ Nenhum cliente com WhatsApp na lista'); return; }
+  if (!confirm(`Enviar mensagem para ${comWA.length} cliente(s) com WhatsApp?`)) return;
+  toast(`📤 Enviando para ${comWA.length} clientes...`, 8000);
   const r = await api('/api/disparar-lista', 'POST', {
-    clientes: dados.map(c => ({ nome: c.cliente, whatsapp: c.whatsapp, media_recorrencia_dias: c.media_recorrencia_dias })),
+    clientes: comWA.map(c => ({ nome: c.cliente, whatsapp: c.whatsapp, media_recorrencia_dias: c.media_recorrencia_dias })),
     mensagem,
   });
   if (r) toast(`✓ ${r.enviados} de ${r.total} mensagens enviadas`);
