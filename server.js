@@ -1040,7 +1040,7 @@ app.get('/api/debug/bling-pedido/:id', async (req, res) => {
       headers: { Authorization: `Bearer ${token}` },
     });
     const p = response.data?.data;
-    res.json({ id: p?.id, situacao: p?.situacao, status_resolvido: resolverStatus(p?.situacao), contato: p?.contato?.nome, total: p?.total, data: p?.data });
+    res.json({ id: p?.id, numero: p?.numero, situacao: p?.situacao, status_resolvido: resolverStatus(p?.situacao), contato: p?.contato?.nome, total: p?.total, data: p?.data });
   } catch (err) {
     res.status(500).json({ erro: err.message, detalhes: err.response?.data });
   }
