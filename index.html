@@ -232,11 +232,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div style="display:flex;gap:8px">
         <select id="fil-status" class="btn" onchange="renderClientes()"><option value="">Todos os Status</option><option>Ativo</option><option>Seguimento</option><option>Inativo</option></select>
         <select id="fil-cidade" class="btn" onchange="renderClientes()"><option value="">Todas as Cidades</option></select>
+        <select id="fil-contato" class="btn" onchange="renderClientes()"><option value="">Todos os Contatos</option><option value="whatsapp">Com WhatsApp</option><option value="email">Com Email</option><option value="sem">Sem Contato</option></select>
         <button class="btn primary" onclick="openModal('cliente')">+ Novo</button>
       </div>
     </div>
     <div class="tbl-wrap"><table class="tbl">
-      <thead><tr><th>Nome</th><th>Cidade</th><th>WhatsApp</th><th>Canal</th><th>Último Pedido</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>Nome</th><th>Cidade</th><th>Contato</th><th>Canal</th><th>Último Pedido</th><th>Status</th><th></th></tr></thead>
       <tbody id="tbl-clientes"></tbody>
     </table></div>
     <div id="cli-empty" class="empty" style="display:none"><div class="ei">👥</div><p>Nenhum cliente encontrado.<br>Clique em "+ Novo" ou importe sua planilha.</p></div>
@@ -620,15 +621,24 @@ async function loadClientes() {
 function renderClientes() {
   const fs = document.getElementById('fil-status')?.value || '';
   const fc = document.getElementById('fil-cidade')?.value || '';
-  const filtered = todosClientes.filter(c => (!fs || c.status === fs) && (!fc || c.cidade === fc));
+  const fct = document.getElementById('fil-contato')?.value || '';
+  const filtered = todosClientes.filter(c =>
+    (!fs || c.status === fs) &&
+    (!fc || c.cidade === fc) &&
+    (!fct ||
+      (fct === 'whatsapp' && c.whatsapp) ||
+      (fct === 'email' && c.email && !c.whatsapp) ||
+      (fct === 'sem' && !c.whatsapp && !c.email)
+    )
+  );
   const tbody = document.getElementById('tbl-clientes');
   const empty = document.getElementById('cli-empty');
   if (!filtered.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
   empty.style.display = 'none';
   tbody.innerHTML = filtered.map(c => `<tr>
-    <td><strong>${c.nome}</strong>${c.email ? `<div style="font-size:10px;color:var(--text3)">${c.email}</div>` : ''}</td>
+    <td><strong>${c.nome}</strong></td>
     <td>${c.cidade || '—'}</td>
-    <td>${c.whatsapp ? formatWA(c.whatsapp) : '—'}</td>
+    <td>${badgeContato(c)}</td>
     <td>${badgeCanal(c.canal)}</td>
     <td>${c.ultimo_pedido ? new Date(c.ultimo_pedido + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}</td>
     <td>${badgeStatus(c.status)}</td>
@@ -1047,6 +1057,16 @@ async function testarWA() {
 // ── HELPERS ──────────────────────────────────────────────────
 function formatWA(n) { if (!n) return '—'; n = n.replace(/\D/g,''); if (n.startsWith('55')) n = n.slice(2); return n.replace(/(\d{2})(\d{5})(\d{4})/, '$1 $2-$3'); }
 function badgeCanal(c) { const m={WhatsApp:'bg',Site:'bb',Google:'bb','Mercado Livre':'ba',Shopee:'br',Amazon:'bgr',Bling:'ba'}; return `<span class="badge ${m[c]||'bgr'}">${c||'—'}</span>`; }
+function badgeContato(c) {
+  const parts = [];
+  if (c.whatsapp) parts.push(`<span class="badge bg">WA</span>`);
+  if (c.email) parts.push(`<span class="badge bb">Email</span>`);
+  if (!parts.length) return `<span class="badge bgr">Sem contato</span>`;
+  const detalhe = c.whatsapp
+    ? `<div style="font-size:10px;color:var(--text3);margin-top:2px">${formatWA(c.whatsapp)}</div>`
+    : `<div style="font-size:10px;color:var(--text3);margin-top:2px">${c.email}</div>`;
+  return parts.join(' ') + detalhe;
+}
 function badgeStatus(s) { const m={Ativo:'bg',Seguimento:'ba',Inativo:'bgr',Pendente:'ba',Recebido:'bg',Urgente:'br',Processando:'ba',Preparando:'bb',Enviado:'bg',Entregue:'bg',Cancelado:'br',Fechado:'bg'}; return `<span class="badge ${m[s]||'bgr'}">${s||'—'}</span>`; }
 function toast(msg, dur=3500) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),dur); }
 
