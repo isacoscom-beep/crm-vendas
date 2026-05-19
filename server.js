@@ -394,16 +394,16 @@ function resolverStatus(situacao) {
   return STATUS_BLING[Number(id)] || STATUS_BLING[Number(valor)] || `Status ${id ?? valor}`;
 }
 
+const LOJAS_BLING = {
+  205540675: 'Mercado Livre',
+  205673727: 'Shopee',
+  205664970: 'Amazon',
+  204231519: 'Site',
+};
+
 function resolverCanal(p) {
-  const nomeLoja = (p.loja?.nome || '').toLowerCase();
-  const numPedido = (p.numeroPedidoLoja || '').toLowerCase();
-  if (nomeLoja.includes('shopee') || numPedido.includes('shopee')) return 'Shopee';
-  if (nomeLoja.includes('amazon') || numPedido.includes('amazon')) return 'Amazon';
-  if (nomeLoja.includes('mercado') || nomeLoja.includes('meli') || numPedido.startsWith('ml')) return 'Mercado Livre';
-  if (nomeLoja.includes('whatsapp') || nomeLoja.includes('zap')) return 'WhatsApp';
-  if (nomeLoja.includes('site') || nomeLoja.includes('woo') || nomeLoja.includes('loja virtual')) return 'Site';
-  if (!p.loja?.nome) return 'WhatsApp'; // venda direta sem loja = WhatsApp
-  return 'Bling';
+  const lojaId = p.loja?.id;
+  return LOJAS_BLING[lojaId] || 'WhatsApp';
 }
 
 async function getBlingToken() {
