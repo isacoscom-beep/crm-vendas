@@ -247,9 +247,11 @@ app.delete('/api/clientes/:id', async (req, res) => {
 // API — PEDIDOS
 // ============================================================
 app.get('/api/pedidos', async (req, res) => {
-  const { canal } = req.query;
+  const { canal, dataInicial, dataFinal } = req.query;
   let query = supabase.from('pedidos').select('*, clientes(nome)').order('criado_em', { ascending: false });
   if (canal) query = query.eq('canal', canal);
+  if (dataInicial) query = query.gte('criado_em', dataInicial);
+  if (dataFinal) query = query.lte('criado_em', dataFinal + 'T23:59:59');
   const { data, error } = await query;
   if (error) return res.status(500).json({ erro: error.message });
   res.json(data);
@@ -364,6 +366,135 @@ app.get('/api/dashboard', async (req, res) => {
     },
     rotas_recentes: rotas.data || [],
   });
+});
+
+// ============================================================
+// ANALYTICS — Comportamento de compra dos clientes
+// ============================================================
+
+async function buscarTodosPedidos() {
+  const { data, error } = await supabase
+    .from('pedidos')
+    .select('cliente_nome, criado_em, valor, canal')
+    .order('criado_em', { ascending: true });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+function agruparPorCliente(pedidos) {
+  const mapa = {};
+  for (const p of pedidos) {
+    const nome = p.cliente_nome?.trim();
+    if (!nome) continue;
+    if (!mapa[nome]) mapa[nome] = { compras: [], totalGasto: 0, canais: new Set() };
+    mapa[nome].compras.push(p.criado_em);
+    mapa[nome].totalGasto += parseFloat(p.valor || 0);
+    mapa[nome].canais.add(p.canal);
+  }
+  return mapa;
+}
+
+// Clientes inativos há mais de X dias (padrão: 60 dias)
+app.get('/api/analytics/inativos', async (req, res) => {
+  try {
+    const dias = parseInt(req.query.dias) || 60;
+    const pedidos = await buscarTodosPedidos();
+    const mapa = agruparPorCliente(pedidos);
+    const agora = new Date();
+    const resultado = [];
+
+    for (const [nome, dados] of Object.entries(mapa)) {
+      const ultimaCompra = new Date(dados.compras[dados.compras.length - 1]);
+      const diasSemComprar = Math.floor((agora - ultimaCompra) / 86400000);
+      if (diasSemComprar >= dias) {
+        resultado.push({
+          cliente: nome,
+          ultima_compra: dados.compras[dados.compras.length - 1].split('T')[0],
+          dias_sem_comprar: diasSemComprar,
+          total_compras: dados.compras.length,
+          total_gasto: parseFloat(dados.totalGasto.toFixed(2)),
+          canais: [...dados.canais],
+        });
+      }
+    }
+
+    resultado.sort((a, b) => b.dias_sem_comprar - a.dias_sem_comprar);
+    res.json({ total: resultado.length, dias_filtro: dias, clientes: resultado });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// Clientes que compraram apenas uma vez
+app.get('/api/analytics/unica-compra', async (req, res) => {
+  try {
+    const pedidos = await buscarTodosPedidos();
+    const mapa = agruparPorCliente(pedidos);
+    const agora = new Date();
+    const resultado = [];
+
+    for (const [nome, dados] of Object.entries(mapa)) {
+      if (dados.compras.length === 1) {
+        const dataCompra = new Date(dados.compras[0]);
+        const diasDesde = Math.floor((agora - dataCompra) / 86400000);
+        resultado.push({
+          cliente: nome,
+          data_compra: dados.compras[0].split('T')[0],
+          dias_desde_compra: diasDesde,
+          total_gasto: parseFloat(dados.totalGasto.toFixed(2)),
+          canais: [...dados.canais],
+        });
+      }
+    }
+
+    resultado.sort((a, b) => b.dias_desde_compra - a.dias_desde_compra);
+    res.json({ total: resultado.length, clientes: resultado });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+// Clientes recorrentes com período médio de recompra
+app.get('/api/analytics/recorrentes', async (req, res) => {
+  try {
+    const pedidos = await buscarTodosPedidos();
+    const mapa = agruparPorCliente(pedidos);
+    const agora = new Date();
+    const resultado = [];
+
+    for (const [nome, dados] of Object.entries(mapa)) {
+      if (dados.compras.length < 2) continue;
+
+      const datas = dados.compras.map(d => new Date(d)).sort((a, b) => a - b);
+      let totalDias = 0;
+      for (let i = 1; i < datas.length; i++) {
+        totalDias += (datas[i] - datas[i - 1]) / 86400000;
+      }
+      const mediaRecorrenciaDias = Math.round(totalDias / (datas.length - 1));
+      const ultimaCompra = datas[datas.length - 1];
+      const diasSemComprar = Math.floor((agora - ultimaCompra) / 86400000);
+      const proximaCompraEstimada = new Date(ultimaCompra.getTime() + mediaRecorrenciaDias * 86400000);
+      const diasParaProxima = Math.floor((proximaCompraEstimada - agora) / 86400000);
+
+      resultado.push({
+        cliente: nome,
+        total_compras: datas.length,
+        media_recorrencia_dias: mediaRecorrenciaDias,
+        ultima_compra: ultimaCompra.toISOString().split('T')[0],
+        dias_sem_comprar: diasSemComprar,
+        proxima_compra_estimada: proximaCompraEstimada.toISOString().split('T')[0],
+        dias_para_proxima: diasParaProxima,
+        status_recorrencia: diasParaProxima < 0 ? 'atrasado' : diasParaProxima <= 7 ? 'proximo' : 'em_dia',
+        total_gasto: parseFloat(dados.totalGasto.toFixed(2)),
+        canais: [...dados.canais],
+      });
+    }
+
+    resultado.sort((a, b) => b.total_compras - a.total_compras);
+    res.json({ total: resultado.length, clientes: resultado });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
 });
 
 // ============================================================
