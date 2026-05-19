@@ -489,6 +489,7 @@ app.get('/api/analytics/recorrentes', async (req, res) => {
         totalDias += (datas[i] - datas[i - 1]) / 86400000;
       }
       const mediaRecorrenciaDias = Math.round(totalDias / (datas.length - 1));
+      if (mediaRecorrenciaDias < 1) continue; // pedidos no mesmo dia não contam como recorrência
       const ultimaCompra = datas[datas.length - 1];
       const diasSemComprar = Math.floor((agora - ultimaCompra) / 86400000);
       const proximaCompraEstimada = new Date(ultimaCompra.getTime() + mediaRecorrenciaDias * 86400000);
