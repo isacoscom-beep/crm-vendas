@@ -372,43 +372,61 @@ app.get('/api/dashboard', async (req, res) => {
 let blingAccessToken = null;
 let blingTokenExpiry = null;
 
+// Mapeamento de IDs de status do Bling para nomes legíveis
+const STATUS_BLING = {
+  1: 'Em Aberto',
+  2: 'Em Andamento',
+  3: 'Cancelado',
+  4: 'Vencido',
+  6: 'Atendido',
+  9: 'Atendido Sankhya',
+  10: 'Verificado',
+  11: 'Parcialmente Atendido',
+};
+
+function resolverStatus(situacao) {
+  if (!situacao) return 'Desconhecido';
+  const id = typeof situacao === 'object' ? situacao.id : situacao;
+  const valor = typeof situacao === 'object' ? situacao.valor : null;
+  // Se valor é texto real (não número), usa direto
+  if (valor && isNaN(valor)) return valor;
+  // Caso contrário, resolve pelo ID
+  return STATUS_BLING[Number(id)] || STATUS_BLING[Number(valor)] || `Status ${id ?? valor}`;
+}
+
+function resolverCanal(p) {
+  const nomeLoja = (p.loja?.nome || '').toLowerCase();
+  const numPedido = (p.numeroPedidoLoja || '').toLowerCase();
+  if (nomeLoja.includes('shopee') || numPedido.includes('shopee')) return 'Shopee';
+  if (nomeLoja.includes('amazon') || numPedido.includes('amazon')) return 'Amazon';
+  if (nomeLoja.includes('mercado') || nomeLoja.includes('meli') || numPedido.startsWith('ml')) return 'Mercado Livre';
+  if (nomeLoja.includes('whatsapp') || nomeLoja.includes('zap')) return 'WhatsApp';
+  if (nomeLoja.includes('site') || nomeLoja.includes('woo') || nomeLoja.includes('loja virtual')) return 'Site';
+  if (!p.loja?.nome) return 'WhatsApp'; // venda direta sem loja = WhatsApp
+  return 'Bling';
+}
+
 async function getBlingToken() {
+  // Tenta usar token salvo no Supabase (refresh token)
   if (blingAccessToken && blingTokenExpiry > Date.now()) return blingAccessToken;
   try {
-    const { data: cfg } = await supabase
-      .from('configuracoes')
-      .select('valor')
-      .eq('chave', 'bling_refresh_token')
-      .single();
-    
-    if (!cfg?.valor) return null;
-
-    const credentials = Buffer.from(
-      `${process.env.BLING_CLIENT_ID}:${process.env.BLING_CLIENT_SECRET}`
-    ).toString('base64');
-
-    const response = await axios.post(
-      'https://www.bling.com.br/Api/v3/oauth/token',
-      `grant_type=refresh_token&refresh_token=${cfg.valor}`,
-      { headers: { 
-        Authorization: `Basic ${credentials}`, 
-        'Content-Type': 'application/x-www-form-urlencoded' 
-      }}
-    );
-
-    blingAccessToken = response.data.access_token;
-    blingTokenExpiry = Date.now() + (response.data.expires_in * 1000);
-
-    await supabase.from('configuracoes').upsert({ 
-      chave: 'bling_refresh_token', 
-      valor: response.data.refresh_token 
-    });
-
-    return blingAccessToken;
+    const { data: cfg } = await supabase.from('configuracoes').select('valor').eq('chave', 'bling_refresh_token').single();
+    if (cfg?.valor) {
+      const credentials = Buffer.from(`${process.env.BLING_CLIENT_ID}:${process.env.BLING_CLIENT_SECRET}`).toString('base64');
+      const response = await axios.post('https://www.bling.com.br/Api/v3/oauth/token',
+        `grant_type=refresh_token&refresh_token=${cfg.valor}`,
+        { headers: { Authorization: `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
+      );
+      blingAccessToken = response.data.access_token;
+      blingTokenExpiry = Date.now() + (response.data.expires_in * 1000);
+      // Atualiza refresh token (onConflict garante sobrescrita correta)
+      await supabase.from('configuracoes').upsert({ chave: 'bling_refresh_token', valor: response.data.refresh_token }, { onConflict: 'chave' });
+      return blingAccessToken;
+    }
   } catch (err) {
     console.error('Erro ao renovar token Bling:', err.message);
-    return null;
   }
+  return null;
 }
 
 // ============================================================
@@ -434,26 +452,22 @@ app.get('/api/bling/pedidos', async (req, res) => {
       const pedidosBling = response.data?.data || [];
       if (!pedidosBling.length) { continuar = false; break; }
 
-      // Filtra apenas Atendido e Atendido Sankhya
-      const pedidosFiltrados = pedidosBling;
-        console.log('Status encontrados:', pedidosBling.map(p => p.situacao?.valor));
-       
+      // Filtra apenas pedidos Atendido e Atendido Sankhya (resolve IDs numéricos também)
+      const pedidosFiltrados = pedidosBling.filter(p => {
+        const status = resolverStatus(p.situacao);
+        return status === 'Atendido' || status === 'Atendido Sankhya';
+      });
+
       for (const p of pedidosFiltrados) {
-        // Identifica o marketplace pelo nome da loja
-        const nomeLoja = p.loja?.nome?.toLowerCase() || '';
-        const canal =
-          nomeLoja.includes('shopee') ? 'Shopee' :
-          nomeLoja.includes('amazon') ? 'Amazon' :
-          nomeLoja.includes('mercado') ? 'Mercado Livre' :
-          nomeLoja.includes('whatsapp') ? 'WhatsApp' :
-          nomeLoja.includes('site') ? 'Site' : 'Bling';
+        const canal = resolverCanal(p);
+        const status = resolverStatus(p.situacao);
 
         await supabase.from('pedidos').upsert({
           id_externo: `bling_${p.id}`,
           canal,
           cliente_nome: p.contato?.nome || '',
-          valor: p.totalVenda || 0,
-          status: p.situacao?.valor || 'Atendido',
+          valor: parseFloat(p.total || p.totalVenda || 0),
+          status,
           criado_em: p.data || new Date().toISOString(),
         }, { onConflict: 'id_externo' });
 
@@ -492,7 +506,7 @@ app.get('/bling/callback', async (req, res) => {
     );
     blingAccessToken = response.data.access_token;
     blingTokenExpiry = Date.now() + (response.data.expires_in * 1000);
-    await supabase.from('configuracoes').upsert({ chave: 'bling_refresh_token', valor: response.data.refresh_token });
+    await supabase.from('configuracoes').upsert({ chave: 'bling_refresh_token', valor: response.data.refresh_token }, { onConflict: 'chave' });
     res.send('<h2>✅ Bling conectado com sucesso! Pode fechar esta aba.</h2>');
   } catch (err) {
     res.status(500).json({ erro: 'Erro ao obter token: ' + err.message });
@@ -564,31 +578,6 @@ app.post('/api/disparar', async (req, res) => {
     await new Promise(r => setTimeout(r, 1500));
   }
   res.json({ enviados, total: clientes.length });
-});
-
-// DEBUG — Ver dados brutos do Bling
-app.get('/api/bling/debug', async (req, res) => {
-  try {
-    const token = await getBlingToken();
-    if (!token) return res.status(500).json({ erro: 'Bling não autenticado' });
-    const response = await axios.get('https://www.bling.com.br/Api/v3/pedidos/vendas', {
-      headers: { Authorization: `Bearer ${token}` },
-      params: { pagina: 1, limite: 5 }
-    });
-    const pedidos = response.data?.data || [];
-    const debug = pedidos.map(p => ({
-      id: p.id,
-      status_codigo: p.situacao?.id,
-      status_nome: p.situacao?.valor,
-      loja_nome: p.loja?.nome,
-      valor: p.totalVenda,
-      valor2: p.total,
-      contato: p.contato?.nome,
-    }));
-    res.json(debug);
-  } catch (err) {
-    res.status(500).json({ erro: err.message });
-  }
 });
 
 // ============================================================
