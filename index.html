@@ -178,6 +178,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="sb-item" onclick="nav('relatorios',this)"><span class="ico">📈</span>Relatórios</div>
   <div class="sb-item" onclick="nav('estrategia',this)"><span class="ico">🎯</span>Estratégia</div>
   <div class="sb-item" onclick="nav('notificacoes',this)"><span class="ico">🔔</span>Notificações <span class="sb-badge" id="badge-notif" style="display:none">0</span></div>
+  <div class="sb-item" onclick="nav('segmentos',this)"><span class="ico">🎯</span>Segmentos WA</div>
   <div class="sb-sec">Config</div>
   <div class="sb-item" onclick="importarCSV()"><span class="ico">📥</span>Importar Planilha</div>
   <div class="sb-item" onclick="exportarClientes()"><span class="ico">📤</span>Exportar Dados</div>
@@ -330,7 +331,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="card">
     <div class="card-hdr">
       <span class="card-title">Pedidos</span>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <select id="fil-ped-canal" class="btn" onchange="loadPedidos()"><option value="">Todos os Canais</option><option>Mercado Livre</option><option>Shopee</option><option>Amazon</option><option>Site</option><option>WhatsApp</option><option>Bling</option></select>
+        <input type="date" id="fil-ped-inicio" class="btn" onchange="loadPedidos()" title="Data inicial" style="font-size:12px">
+        <input type="date" id="fil-ped-fim" class="btn" onchange="loadPedidos()" title="Data final" style="font-size:12px">
         <button class="btn success" onclick="sincWoo()">🔄 WooCommerce</button>
         <button class="btn success" onclick="sincML()">🔄 Mercado Livre</button>
         <button class="btn primary" onclick="openModal('pedido')">+ Novo Pedido</button>
@@ -434,6 +438,65 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   </div>
 </div>
 
+<!-- SEGMENTOS -->
+<div id="page-segmentos" class="page">
+  <div style="display:flex;gap:8px;margin-bottom:20px">
+    <button class="btn primary" id="tab-rec" onclick="switchSegTab('rec')">🔄 Clientes Recorrentes</button>
+    <button class="btn" id="tab-uni" onclick="switchSegTab('uni')">1️⃣ Compra Única</button>
+  </div>
+
+  <div id="panel-rec">
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-title">Clientes Recorrentes <span class="card-sub">(com WhatsApp)</span></span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select id="seg-rec-canal" class="btn" onchange="loadRecorrentes()"><option value="">Todos os Canais</option><option>WhatsApp</option><option>Mercado Livre</option><option>Shopee</option><option>Amazon</option><option>Site</option><option>Bling</option></select>
+          <select id="seg-rec-status" class="btn" onchange="loadRecorrentes()"><option value="">Todos os Status</option><option value="proximo">Próximos (≤7 dias)</option><option value="atrasado">Atrasados</option><option value="em_dia">Em dia</option></select>
+          <button class="btn" onclick="loadRecorrentes()">🔄</button>
+        </div>
+      </div>
+      <div class="fg" style="margin-bottom:12px">
+        <label style="font-size:10px;font-weight:600;color:var(--text3)">MENSAGEM — use {nome} e {periodicidade}</label>
+        <textarea id="msg-rec" style="width:100%;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2);padding:8px 11px;font-family:'DM Sans',sans-serif;resize:vertical;min-height:70px">Olá {nome}! 😊 Notamos que você costuma fazer pedidos a cada {periodicidade} dias. Está chegando a hora de reabastecer! Posso separar alguma coisa para você? 🌿</textarea>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <span id="seg-rec-count" style="font-size:12px;color:var(--text2)">—</span>
+        <button class="btn primary" onclick="dispararSegmento('rec')">📤 Enviar para todos filtrados</button>
+      </div>
+      <div class="tbl-wrap"><table class="tbl">
+        <thead><tr><th>Cliente</th><th>WhatsApp</th><th>Canais</th><th>Compras</th><th>Periodicidade</th><th>Última Compra</th><th>Próxima Est.</th><th>Status</th></tr></thead>
+        <tbody id="tbl-rec"></tbody>
+      </table></div>
+      <div id="rec-empty" class="empty" style="display:none"><div class="ei">🔄</div><p>Nenhum cliente recorrente encontrado com os filtros selecionados.</p></div>
+    </div>
+  </div>
+
+  <div id="panel-uni" style="display:none">
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-title">Clientes com Compra Única <span class="card-sub">(com WhatsApp)</span></span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select id="seg-uni-canal" class="btn" onchange="loadUnicaCompra()"><option value="">Todos os Canais</option><option>WhatsApp</option><option>Mercado Livre</option><option>Shopee</option><option>Amazon</option><option>Site</option><option>Bling</option></select>
+          <button class="btn" onclick="loadUnicaCompra()">🔄</button>
+        </div>
+      </div>
+      <div class="fg" style="margin-bottom:12px">
+        <label style="font-size:10px;font-weight:600;color:var(--text3)">MENSAGEM DE RESGATE — use {nome}</label>
+        <textarea id="msg-uni" style="width:100%;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2);padding:8px 11px;font-family:'DM Sans',sans-serif;resize:vertical;min-height:70px">Olá {nome}! 😊 Faz um tempo desde sua última compra conosco. Temos produtos fresquinhos e novidades esperando por você! Que tal fazer um novo pedido? 🌿</textarea>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <span id="seg-uni-count" style="font-size:12px;color:var(--text2)">—</span>
+        <button class="btn primary" onclick="dispararSegmento('uni')">📤 Enviar para todos filtrados</button>
+      </div>
+      <div class="tbl-wrap"><table class="tbl">
+        <thead><tr><th>Cliente</th><th>WhatsApp</th><th>Canal</th><th>Data Compra</th><th>Dias s/ Comprar</th><th>Total Gasto</th></tr></thead>
+        <tbody id="tbl-uni"></tbody>
+      </table></div>
+      <div id="uni-empty" class="empty" style="display:none"><div class="ei">1️⃣</div><p>Nenhum cliente com compra única encontrado.</p></div>
+    </div>
+  </div>
+</div>
+
 </div><!-- /main -->
 </div><!-- /app -->
 
@@ -461,6 +524,7 @@ const pageActions = {
   relatorios:{ title:'Relatórios', btn:'', modal:'' },
   estrategia:{ title:'Estratégia', btn:'', modal:'' },
   notificacoes:{ title:'Notificações', btn:'', modal:'' },
+  segmentos:{ title:'Segmentos de Clientes', btn:'', modal:'' },
 };
 
 function nav(id, el) {
@@ -486,6 +550,7 @@ function renderPage(id) {
   else if (id === 'relatorios') loadRelatorios();
   else if (id === 'estrategia') loadEstrategia();
   else if (id === 'notificacoes') loadNotificacoes();
+  else if (id === 'segmentos') loadSegmentos();
 }
 
 // ── API HELPER ───────────────────────────────────────────────
@@ -692,7 +757,15 @@ async function criarRota(disparar) {
 
 // ── PEDIDOS ──────────────────────────────────────────────────
 async function loadPedidos() {
-  const pedidos = await api('/api/pedidos') || [];
+  const canal = document.getElementById('fil-ped-canal')?.value || '';
+  const inicio = document.getElementById('fil-ped-inicio')?.value || '';
+  const fim = document.getElementById('fil-ped-fim')?.value || '';
+  const params = [];
+  if (canal) params.push('canal=' + encodeURIComponent(canal));
+  if (inicio) params.push('dataInicial=' + inicio);
+  if (fim) params.push('dataFinal=' + fim);
+  const path = '/api/pedidos' + (params.length ? '?' + params.join('&') : '');
+  const pedidos = await api(path) || [];
   const total = pedidos.reduce((s, p) => s + parseFloat(p.valor || 0), 0);
   const hoje = new Date();
   const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString();
@@ -1072,6 +1145,86 @@ async function salvarWANotif(id) {
   await api('/api/notificacoes/' + id, 'PUT', { cliente_whatsapp: wa });
   toast('✓ WhatsApp salvo');
   filtrarNotif(document.getElementById('notif-filtro')?.value || 'pendente');
+}
+
+// ── SEGMENTOS ────────────────────────────────────────────────
+let dadosRec = [], dadosUni = [];
+
+async function loadSegmentos() {
+  switchSegTab('rec');
+}
+
+function switchSegTab(tab) {
+  document.getElementById('panel-rec').style.display = tab === 'rec' ? '' : 'none';
+  document.getElementById('panel-uni').style.display = tab === 'uni' ? '' : 'none';
+  document.getElementById('tab-rec').className = 'btn' + (tab === 'rec' ? ' primary' : '');
+  document.getElementById('tab-uni').className = 'btn' + (tab === 'uni' ? ' primary' : '');
+  if (tab === 'rec') loadRecorrentes();
+  if (tab === 'uni') loadUnicaCompra();
+}
+
+async function loadRecorrentes() {
+  const canal = document.getElementById('seg-rec-canal')?.value || '';
+  const status = document.getElementById('seg-rec-status')?.value || '';
+  const params = [];
+  if (canal) params.push('canal=' + encodeURIComponent(canal));
+  if (status) params.push('status_recorrencia=' + status);
+  const path = '/api/analytics/recorrentes' + (params.length ? '?' + params.join('&') : '');
+  const r = await api(path);
+  dadosRec = r?.clientes || [];
+  const tbody = document.getElementById('tbl-rec');
+  const empty = document.getElementById('rec-empty');
+  document.getElementById('seg-rec-count').textContent = `${dadosRec.length} cliente(s) encontrado(s)`;
+  if (!dadosRec.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = dadosRec.map(c => {
+    const sb = c.status_recorrencia === 'atrasado' ? 'br' : c.status_recorrencia === 'proximo' ? 'ba' : 'bg';
+    const sl = c.status_recorrencia === 'atrasado' ? 'Atrasado' : c.status_recorrencia === 'proximo' ? 'Próximo' : 'Em dia';
+    return `<tr>
+      <td><strong>${c.cliente}</strong></td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px">${formatWA(c.whatsapp)}</td>
+      <td>${(c.canais||[]).map(ch => badgeCanal(ch)).join(' ')}</td>
+      <td>${c.total_compras}</td>
+      <td>A cada ${c.media_recorrencia_dias}d</td>
+      <td>${c.ultima_compra ? new Date(c.ultima_compra+'T12:00:00').toLocaleDateString('pt-BR') : '—'}</td>
+      <td>${c.proxima_compra_estimada ? new Date(c.proxima_compra_estimada+'T12:00:00').toLocaleDateString('pt-BR') : '—'}</td>
+      <td><span class="badge ${sb}">${sl}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+async function loadUnicaCompra() {
+  const canal = document.getElementById('seg-uni-canal')?.value || '';
+  const path = '/api/analytics/unica-compra' + (canal ? '?canal=' + encodeURIComponent(canal) : '');
+  const r = await api(path);
+  dadosUni = r?.clientes || [];
+  const tbody = document.getElementById('tbl-uni');
+  const empty = document.getElementById('uni-empty');
+  document.getElementById('seg-uni-count').textContent = `${dadosUni.length} cliente(s) encontrado(s)`;
+  if (!dadosUni.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = dadosUni.map(c => `<tr>
+    <td><strong>${c.cliente}</strong></td>
+    <td style="font-family:'DM Mono',monospace;font-size:11px">${formatWA(c.whatsapp)}</td>
+    <td>${(c.canais||[]).map(ch => badgeCanal(ch)).join(' ')}</td>
+    <td>${c.data_compra ? new Date(c.data_compra+'T12:00:00').toLocaleDateString('pt-BR') : '—'}</td>
+    <td>${c.dias_desde_compra}d</td>
+    <td style="font-family:'DM Mono',monospace">R$${parseFloat(c.total_gasto||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+  </tr>`).join('');
+}
+
+async function dispararSegmento(tipo) {
+  const dados = tipo === 'rec' ? dadosRec : dadosUni;
+  const mensagem = document.getElementById('msg-' + tipo)?.value?.trim();
+  if (!dados.length) { toast('⚠ Nenhum cliente na lista atual'); return; }
+  if (!mensagem) { toast('⚠ Escreva a mensagem antes de enviar'); return; }
+  if (!confirm(`Enviar mensagem para ${dados.length} cliente(s)?`)) return;
+  toast(`📤 Enviando para ${dados.length} clientes...`, 8000);
+  const r = await api('/api/disparar-lista', 'POST', {
+    clientes: dados.map(c => ({ nome: c.cliente, whatsapp: c.whatsapp, media_recorrencia_dias: c.media_recorrencia_dias })),
+    mensagem,
+  });
+  if (r) toast(`✓ ${r.enviados} de ${r.total} mensagens enviadas`);
 }
 
 // ── INIT ─────────────────────────────────────────────────────

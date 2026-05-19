@@ -428,23 +428,33 @@ app.get('/api/analytics/inativos', async (req, res) => {
 // Clientes que compraram apenas uma vez
 app.get('/api/analytics/unica-compra', async (req, res) => {
   try {
+    const { canal } = req.query;
     const pedidos = await buscarTodosPedidos();
     const mapa = agruparPorCliente(pedidos);
     const agora = new Date();
-    const resultado = [];
 
+    const { data: clientes } = await supabase.from('clientes').select('nome, whatsapp');
+    const mapaWA = {};
+    for (const c of (clientes || [])) {
+      if (c.nome) mapaWA[c.nome.trim().toLowerCase()] = c.whatsapp;
+    }
+
+    const resultado = [];
     for (const [nome, dados] of Object.entries(mapa)) {
-      if (dados.compras.length === 1) {
-        const dataCompra = new Date(dados.compras[0]);
-        const diasDesde = Math.floor((agora - dataCompra) / 86400000);
-        resultado.push({
-          cliente: nome,
-          data_compra: dados.compras[0].split('T')[0],
-          dias_desde_compra: diasDesde,
-          total_gasto: parseFloat(dados.totalGasto.toFixed(2)),
-          canais: [...dados.canais],
-        });
-      }
+      if (dados.compras.length !== 1) continue;
+      if (canal && !dados.canais.has(canal)) continue;
+      const wa = mapaWA[nome.toLowerCase()] || null;
+      if (!wa) continue;
+      const dataCompra = new Date(dados.compras[0]);
+      const diasDesde = Math.floor((agora - dataCompra) / 86400000);
+      resultado.push({
+        cliente: nome,
+        whatsapp: wa,
+        data_compra: dados.compras[0].split('T')[0],
+        dias_desde_compra: diasDesde,
+        total_gasto: parseFloat(dados.totalGasto.toFixed(2)),
+        canais: [...dados.canais],
+      });
     }
 
     resultado.sort((a, b) => b.dias_desde_compra - a.dias_desde_compra);
@@ -457,13 +467,23 @@ app.get('/api/analytics/unica-compra', async (req, res) => {
 // Clientes recorrentes com período médio de recompra
 app.get('/api/analytics/recorrentes', async (req, res) => {
   try {
+    const { canal, status_recorrencia } = req.query;
     const pedidos = await buscarTodosPedidos();
     const mapa = agruparPorCliente(pedidos);
     const agora = new Date();
-    const resultado = [];
 
+    const { data: clientes } = await supabase.from('clientes').select('nome, whatsapp');
+    const mapaWA = {};
+    for (const c of (clientes || [])) {
+      if (c.nome) mapaWA[c.nome.trim().toLowerCase()] = c.whatsapp;
+    }
+
+    const resultado = [];
     for (const [nome, dados] of Object.entries(mapa)) {
       if (dados.compras.length < 2) continue;
+      if (canal && !dados.canais.has(canal)) continue;
+      const wa = mapaWA[nome.toLowerCase()] || null;
+      if (!wa) continue;
 
       const datas = dados.compras.map(d => new Date(d)).sort((a, b) => a - b);
       let totalDias = 0;
@@ -475,16 +495,20 @@ app.get('/api/analytics/recorrentes', async (req, res) => {
       const diasSemComprar = Math.floor((agora - ultimaCompra) / 86400000);
       const proximaCompraEstimada = new Date(ultimaCompra.getTime() + mediaRecorrenciaDias * 86400000);
       const diasParaProxima = Math.floor((proximaCompraEstimada - agora) / 86400000);
+      const statusRec = diasParaProxima < 0 ? 'atrasado' : diasParaProxima <= 7 ? 'proximo' : 'em_dia';
+
+      if (status_recorrencia && statusRec !== status_recorrencia) continue;
 
       resultado.push({
         cliente: nome,
+        whatsapp: wa,
         total_compras: datas.length,
         media_recorrencia_dias: mediaRecorrenciaDias,
         ultima_compra: ultimaCompra.toISOString().split('T')[0],
         dias_sem_comprar: diasSemComprar,
         proxima_compra_estimada: proximaCompraEstimada.toISOString().split('T')[0],
         dias_para_proxima: diasParaProxima,
-        status_recorrencia: diasParaProxima < 0 ? 'atrasado' : diasParaProxima <= 7 ? 'proximo' : 'em_dia',
+        status_recorrencia: statusRec,
         total_gasto: parseFloat(dados.totalGasto.toFixed(2)),
         canais: [...dados.canais],
       });
@@ -907,6 +931,25 @@ app.post('/api/disparar', async (req, res) => {
   let enviados = 0;
   for (const c of clientes) {
     const msg = mensagem.replace('{nome}', c.nome).replace('{cidade}', c.cidade);
+    const resultado = await enviarWhatsapp(c.whatsapp, msg);
+    if (resultado.ok) enviados++;
+    await new Promise(r => setTimeout(r, 1500));
+  }
+  res.json({ enviados, total: clientes.length });
+});
+
+// ============================================================
+// DISPARAR MENSAGEM PARA LISTA DE CLIENTES (Segmentos)
+// ============================================================
+app.post('/api/disparar-lista', async (req, res) => {
+  const { clientes, mensagem } = req.body;
+  if (!clientes?.length || !mensagem) return res.status(400).json({ erro: 'Dados inválidos' });
+  let enviados = 0;
+  for (const c of clientes) {
+    if (!c.whatsapp) continue;
+    const msg = mensagem
+      .replace('{nome}', c.nome || c.cliente || '')
+      .replace('{periodicidade}', c.media_recorrencia_dias || '?');
     const resultado = await enviarWhatsapp(c.whatsapp, msg);
     if (resultado.ok) enviados++;
     await new Promise(r => setTimeout(r, 1500));
