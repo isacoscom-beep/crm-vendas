@@ -1032,6 +1032,27 @@ app.post('/api/disparar', async (req, res) => {
 // ============================================================
 // MIGRAÇÃO — Normaliza canais "Site" e "Bling" para "WhatsApp"
 // ============================================================
+app.get('/api/debug/bling-mapa-status', async (req, res) => {
+  try {
+    const token = await getBlingToken();
+    if (!token) return res.status(500).json({ erro: 'Bling não autenticado' });
+    const situacoes = [1, 2, 3, 4, 6, 9, 10, 11];
+    const resultado = {};
+    for (const sit of situacoes) {
+      const r = await axios.get('https://www.bling.com.br/Api/v3/pedidos/vendas', {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { pagina: 1, limite: 3, situacao: sit },
+      });
+      const pedidos = r.data?.data || [];
+      resultado[`filtro_${sit}`] = pedidos.map(p => ({ id: p.id, numero: p.numero, situacao_id: p.situacao?.id, situacao_valor: p.situacao?.valor, data: p.data }));
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    res.json(resultado);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 app.get('/api/debug/bling-numero/:numero', async (req, res) => {
   try {
     const token = await getBlingToken();
