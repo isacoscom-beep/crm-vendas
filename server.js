@@ -682,7 +682,7 @@ const STATUS_BLING = {
   11: 'Parcialmente Atendido',
 };
 
-function resolverStatus(situacao) {
+function resolverStatus(situacao, canal = '') {
   if (!situacao) return 'Desconhecido';
   const id = Number(typeof situacao === 'object' ? situacao.id : situacao);
   const valorRaw = typeof situacao === 'object' ? situacao.valor : null;
@@ -691,8 +691,10 @@ function resolverStatus(situacao) {
   const valor = Number(valorRaw);
   // Na API v3 do Bling, situacao.valor=1 indica pedido concluído, valor=0 indica aberto
   if (valor === 1) {
-    if (id === 9) return 'Atendido Sankhya';
-    return 'Atendido';
+    // Marketplace (ML, Shopee, Amazon) passam pelo Sankhya ERP → Atendido Sankhya
+    // WhatsApp e demais → Atendido
+    const ehMarketplace = ['Mercado Livre', 'Shopee', 'Amazon'].includes(canal);
+    return ehMarketplace ? 'Atendido Sankhya' : 'Atendido';
   }
   // Pedido não concluído: tenta nome específico pelo ID
   const nomes = { 1: 'Em Aberto', 2: 'Em Andamento', 3: 'Cancelado', 4: 'Vencido', 6: 'Em Aberto', 10: 'Verificado', 11: 'Parcialmente Atendido' };
@@ -767,7 +769,7 @@ async function sincronizarBlingPedidos() {
 
     for (const p of pedidosBling) {
       const canal = resolverCanal(p);
-      const status = resolverStatus(p.situacao);
+      const status = resolverStatus(p.situacao, canal);
       const clienteNome = p.contato?.nome || '';
       const criado_em = p.data || new Date().toISOString();
       const valor = parseFloat(p.total || p.totalVenda || 0);
@@ -1106,14 +1108,16 @@ app.post('/api/admin/corrigir-status-bling', async (req, res) => {
   try {
     const token = await getBlingToken();
     if (!token) return res.status(500).json({ erro: 'Bling não autenticado' });
-    // Busca todos pedidos do banco com id_externo do Bling e status "Atendido" (possivelmente errado)
-    const { data: pedidosDB } = await supabase.from('pedidos').select('id, id_externo, status').like('id_externo', 'bling_%').eq('status', 'Atendido');
+    // Busca todos pedidos do banco com id_externo do Bling (verifica todos os concluídos)
+    const { data: pedidosDB } = await supabase.from('pedidos').select('id, id_externo, status, canal').like('id_externo', 'bling_%').in('status', STATUS_CONCLUIDO);
     let corrigidos = 0;
     for (const p of pedidosDB || []) {
       const blingId = p.id_externo.replace('bling_', '');
       try {
         const r = await axios.get(`https://www.bling.com.br/Api/v3/pedidos/vendas/${blingId}`, { headers: { Authorization: `Bearer ${token}` } });
-        const statusReal = resolverStatus(r.data?.data?.situacao);
+        const blingData = r.data?.data;
+        const canalReal = resolverCanal(blingData) || p.canal;
+        const statusReal = resolverStatus(blingData?.situacao, canalReal);
         if (statusReal !== p.status) {
           await supabase.from('pedidos').update({ status: statusReal }).eq('id', p.id);
           corrigidos++;
