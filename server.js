@@ -249,7 +249,7 @@ app.delete('/api/clientes/:id', async (req, res) => {
 app.get('/api/pedidos', async (req, res) => {
   const { canal, dataInicial, dataFinal } = req.query;
   let query = supabase.from('pedidos').select('*, clientes(nome)')
-    .in('status', STATUS_CONCLUIDO)
+    .ilike('status', 'Atendido%')
     .order('criado_em', { ascending: false });
   if (canal) query = query.eq('canal', canal);
   if (dataInicial) query = query.gte('criado_em', dataInicial);
@@ -758,7 +758,7 @@ async function getBlingToken() {
   return null;
 }
 
-const STATUS_CONCLUIDO = ['Atendido', 'Atendido Sankhya'];
+const STATUS_CONCLUIDO = ['Atendido', 'Atendido Sankhya', 'Atendido Bling Isacos'];
 
 // ============================================================
 // BLING — Funções de sync reutilizáveis (rotas + agendamento)
