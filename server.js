@@ -777,7 +777,7 @@ async function sincronizarBlingPedidos() {
   while (continuar) {
     const response = await axios.get('https://www.bling.com.br/Api/v3/pedidos/vendas', {
       headers: { Authorization: `Bearer ${token}` },
-      params: { pagina, limite: 100, dataInicial: '2020-01-01' },
+      params: { pagina, limite: 100 },
     });
     const pedidosBling = response.data?.data || [];
     if (!pedidosBling.length) { continuar = false; break; }
