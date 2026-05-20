@@ -976,8 +976,12 @@ app.get('/bling/callback', async (req, res) => {
   const baseUrl = process.env.APP_URL || 'https://crm-vendas-rjoy.onrender.com';
   try {
     const credentials = Buffer.from(`${process.env.BLING_CLIENT_ID}:${process.env.BLING_CLIENT_SECRET}`).toString('base64');
+    const params = new URLSearchParams();
+    params.append('grant_type', 'authorization_code');
+    params.append('code', code);
+    params.append('redirect_uri', `${baseUrl}/bling/callback`);
     const response = await axios.post('https://www.bling.com.br/Api/v3/oauth/token',
-      `grant_type=authorization_code&code=${code}&redirect_uri=${baseUrl}/bling/callback`,
+      params.toString(),
       { headers: { Authorization: `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
     blingAccessToken = response.data.access_token;
