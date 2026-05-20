@@ -965,7 +965,8 @@ app.get('/api/bling/debug', async (req, res) => {
 // ============================================================
 app.get('/bling/auth', (req, res) => {
   const baseUrl = process.env.APP_URL || 'https://crm-vendas-rjoy.onrender.com';
-  const url = `https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=${process.env.BLING_CLIENT_ID}&redirect_uri=${baseUrl}/bling/callback`;
+  const state = Math.random().toString(36).substring(2);
+  const url = `https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=${process.env.BLING_CLIENT_ID}&redirect_uri=${encodeURIComponent(baseUrl + '/bling/callback')}&state=${state}`;
   res.redirect(url);
 });
 
