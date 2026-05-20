@@ -706,7 +706,7 @@ function resolverStatus(situacao) {
   if (valorRaw && typeof valorRaw === 'string' && isNaN(Number(valorRaw))) return valorRaw;
   const valor = Number(valorRaw);
   // Fallback por valor: 1=concluído, 0=aberto
-  if (valor === 1) return id === 9 ? 'Atendido Sankhya' : 'Atendido';
+  if (valor === 1) return 'Atendido';
   const nomes = { 1: 'Em Aberto', 2: 'Em Andamento', 3: 'Cancelado', 4: 'Vencido', 6: 'Em Aberto', 10: 'Verificado', 11: 'Parcialmente Atendido' };
   return nomes[id] || 'Em Aberto';
 }
