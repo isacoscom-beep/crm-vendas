@@ -980,6 +980,8 @@ app.get('/bling/callback', async (req, res) => {
     params.append('grant_type', 'authorization_code');
     params.append('code', code);
     params.append('redirect_uri', `${baseUrl}/bling/callback`);
+    params.append('client_id', process.env.BLING_CLIENT_ID);
+    params.append('client_secret', process.env.BLING_CLIENT_SECRET);
     const response = await axios.post('https://www.bling.com.br/Api/v3/oauth/token',
       params.toString(),
       { headers: { Authorization: `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
