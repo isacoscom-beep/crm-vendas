@@ -777,7 +777,7 @@ async function sincronizarBlingPedidos() {
   while (continuar) {
     const response = await axios.get('https://www.bling.com.br/Api/v3/pedidos/vendas', {
       headers: { Authorization: `Bearer ${token}` },
-      params: { pagina, limite: 100 },
+      params: { pagina, limite: 100, dataInicial: '2020-01-01' },
     });
     const pedidosBling = response.data?.data || [];
     if (!pedidosBling.length) { continuar = false; break; }
@@ -811,15 +811,6 @@ async function sincronizarBlingPedidos() {
     pagina++;
     await new Promise(r => setTimeout(r, 500));
     if (pedidosBling.length < 100) continuar = false;
-  }
-
-  // Remove duplicatas: registros sem id_externo de clientes que já estão no Bling
-  const nomesParaLimpar = [...nomesSincronizados];
-  if (nomesParaLimpar.length) {
-    await supabase.from('pedidos')
-      .delete()
-      .is('id_externo', null)
-      .in('cliente_nome', nomesParaLimpar);
   }
 
   return { sincronizados: totalSincronizados, paginas: pagina - 1 };
