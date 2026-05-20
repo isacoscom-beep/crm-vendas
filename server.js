@@ -971,7 +971,7 @@ app.get('/bling/auth', (req, res) => {
 
 app.get('/bling/callback', async (req, res) => {
   const { code } = req.query;
-  if (!code) return res.status(400).json({ erro: 'Código não recebido' });
+  if (!code) return res.status(400).json({ erro: 'Código não recebido', params_recebidos: req.query });
   const baseUrl = process.env.APP_URL || 'https://crm-vendas-rjoy.onrender.com';
   try {
     const credentials = Buffer.from(`${process.env.BLING_CLIENT_ID}:${process.env.BLING_CLIENT_SECRET}`).toString('base64');
