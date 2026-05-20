@@ -1120,6 +1120,29 @@ app.get('/api/debug/bling-pedido/:id', async (req, res) => {
   }
 });
 
+app.get('/api/debug/bling-situacoes-lista', async (req, res) => {
+  try {
+    const token = await getBlingToken();
+    if (!token) return res.status(500).json({ erro: 'Bling não autenticado' });
+    const modulos = [1, 2, 3, 4, 5];
+    const resultado = {};
+    for (const mod of modulos) {
+      try {
+        const r = await axios.get(`https://www.bling.com.br/Api/v3/situacoes/modulos/${mod}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        resultado[`modulo_${mod}`] = r.data?.data || [];
+      } catch (e) {
+        resultado[`modulo_${mod}`] = { erro: e.message };
+      }
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    res.json(resultado);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 app.get('/api/debug/pedidos', async (req, res) => {
   const { nome } = req.query;
   let query = supabase.from('pedidos').select('id, id_externo, cliente_nome, status, valor, criado_em, canal').order('criado_em', { ascending: false }).limit(50);
