@@ -989,7 +989,7 @@ app.get('/bling/callback', async (req, res) => {
     await supabase.from('configuracoes').upsert({ chave: 'bling_refresh_token', valor: response.data.refresh_token }, { onConflict: 'chave' });
     res.send('<h2>✅ Bling conectado com sucesso! Pode fechar esta aba.</h2>');
   } catch (err) {
-    res.status(500).json({ erro: 'Erro ao obter token: ' + err.message });
+    res.status(500).json({ erro: 'Erro ao obter token: ' + err.message, detalhe: err.response?.data });
   }
 });
 
