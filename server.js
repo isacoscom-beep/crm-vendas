@@ -683,7 +683,13 @@ const STATUS_BLING = {
 };
 
 // Cache de situações carregado do Bling: { id → nome }
-let cacheSituacoes = {};
+let cacheSituacoes = {
+  451604: 'Atendido Sankhya',
+  468898: 'Atendido Bling Isacos',
+};
+
+// IDs de situações concluídas (valor=1 OU IDs personalizados conhecidos)
+const SITUACOES_CONCLUIDAS = new Set([9, 451604, 468898]);
 
 async function carregarSituacoesBling(token) {
   try {
@@ -700,12 +706,9 @@ function resolverStatus(situacao) {
   if (!situacao) return 'Desconhecido';
   const id = Number(typeof situacao === 'object' ? situacao.id : situacao);
   const valorRaw = typeof situacao === 'object' ? situacao.valor : null;
-  // Nome real do Bling (do cache)
   if (cacheSituacoes[id]) return cacheSituacoes[id];
-  // Texto direto no valor
   if (valorRaw && typeof valorRaw === 'string' && isNaN(Number(valorRaw))) return valorRaw;
   const valor = Number(valorRaw);
-  // Fallback por valor: 1=concluído, 0=aberto
   if (valor === 1) return 'Atendido';
   const nomes = { 1: 'Em Aberto', 2: 'Em Andamento', 3: 'Cancelado', 4: 'Vencido', 6: 'Em Aberto', 10: 'Verificado', 11: 'Parcialmente Atendido' };
   return nomes[id] || 'Em Aberto';
@@ -781,7 +784,9 @@ async function sincronizarBlingPedidos() {
 
     for (const p of pedidosBling) {
       // Ignora pedidos não concluídos (Em Aberto, Cancelado, etc.)
-      if (Number(p.situacao?.valor) !== 1) continue;
+      const situacaoId = Number(p.situacao?.id);
+      const situacaoValor = Number(p.situacao?.valor);
+      if (situacaoValor !== 1 && !SITUACOES_CONCLUIDAS.has(situacaoId)) continue;
 
       const canal = resolverCanal(p);
       const status = resolverStatus(p.situacao);
