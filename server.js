@@ -682,21 +682,31 @@ const STATUS_BLING = {
   11: 'Parcialmente Atendido',
 };
 
-function resolverStatus(situacao, canal = '') {
+// Cache de situações carregado do Bling: { id → nome }
+let cacheSituacoes = {};
+
+async function carregarSituacoesBling(token) {
+  try {
+    const r = await axios.get('https://www.bling.com.br/Api/v3/situacoes/modulos/3', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const sits = r.data?.data || [];
+    for (const s of sits) cacheSituacoes[s.id] = s.nome;
+    if (sits.length) console.log('[Bling] Situações carregadas:', cacheSituacoes);
+  } catch {}
+}
+
+function resolverStatus(situacao) {
   if (!situacao) return 'Desconhecido';
   const id = Number(typeof situacao === 'object' ? situacao.id : situacao);
   const valorRaw = typeof situacao === 'object' ? situacao.valor : null;
-  // Algumas versões da API retornam o texto diretamente no valor
+  // Nome real do Bling (do cache)
+  if (cacheSituacoes[id]) return cacheSituacoes[id];
+  // Texto direto no valor
   if (valorRaw && typeof valorRaw === 'string' && isNaN(Number(valorRaw))) return valorRaw;
   const valor = Number(valorRaw);
-  // Na API v3 do Bling, situacao.valor=1 indica pedido concluído, valor=0 indica aberto
-  if (valor === 1) {
-    // Marketplace (ML, Shopee, Amazon) passam pelo Sankhya ERP → Atendido Sankhya
-    // WhatsApp e demais → Atendido
-    const ehMarketplace = ['Mercado Livre', 'Shopee', 'Amazon'].includes(canal);
-    return ehMarketplace ? 'Atendido Sankhya' : 'Atendido';
-  }
-  // Pedido não concluído: tenta nome específico pelo ID
+  // Fallback por valor: 1=concluído, 0=aberto
+  if (valor === 1) return id === 9 ? 'Atendido Sankhya' : 'Atendido';
   const nomes = { 1: 'Em Aberto', 2: 'Em Andamento', 3: 'Cancelado', 4: 'Vencido', 6: 'Em Aberto', 10: 'Verificado', 11: 'Parcialmente Atendido' };
   return nomes[id] || 'Em Aberto';
 }
@@ -757,6 +767,8 @@ async function sincronizarBlingPedidos() {
   const token = await getBlingToken();
   if (!token) throw new Error('Bling não autenticado');
 
+  await carregarSituacoesBling(token);
+
   let pagina = 1, totalSincronizados = 0, continuar = true;
   const nomesSincronizados = new Set();
   while (continuar) {
@@ -768,8 +780,11 @@ async function sincronizarBlingPedidos() {
     if (!pedidosBling.length) { continuar = false; break; }
 
     for (const p of pedidosBling) {
+      // Ignora pedidos não concluídos (Em Aberto, Cancelado, etc.)
+      if (Number(p.situacao?.valor) !== 1) continue;
+
       const canal = resolverCanal(p);
-      const status = resolverStatus(p.situacao, canal);
+      const status = resolverStatus(p.situacao);
       const clienteNome = p.contato?.nome || '';
       const criado_em = p.data || new Date().toISOString();
       const valor = parseFloat(p.total || p.totalVenda || 0);
@@ -1108,24 +1123,31 @@ app.post('/api/admin/corrigir-status-bling', async (req, res) => {
   try {
     const token = await getBlingToken();
     if (!token) return res.status(500).json({ erro: 'Bling não autenticado' });
-    // Busca todos pedidos do banco com id_externo do Bling (verifica todos os concluídos)
-    const { data: pedidosDB } = await supabase.from('pedidos').select('id, id_externo, status, canal').like('id_externo', 'bling_%').in('status', STATUS_CONCLUIDO);
-    let corrigidos = 0;
+    await carregarSituacoesBling(token);
+    // Busca todos pedidos do banco com id_externo do Bling
+    const { data: pedidosDB } = await supabase.from('pedidos').select('id, id_externo, status').like('id_externo', 'bling_%');
+    let corrigidos = 0, removidos = 0;
     for (const p of pedidosDB || []) {
       const blingId = p.id_externo.replace('bling_', '');
       try {
         const r = await axios.get(`https://www.bling.com.br/Api/v3/pedidos/vendas/${blingId}`, { headers: { Authorization: `Bearer ${token}` } });
         const blingData = r.data?.data;
-        const canalReal = resolverCanal(blingData) || p.canal;
-        const statusReal = resolverStatus(blingData?.situacao, canalReal);
-        if (statusReal !== p.status) {
-          await supabase.from('pedidos').update({ status: statusReal }).eq('id', p.id);
-          corrigidos++;
+        const naoEhConcluido = Number(blingData?.situacao?.valor) !== 1;
+        if (naoEhConcluido) {
+          // Remove do CRM pedidos que não são mais concluídos
+          await supabase.from('pedidos').delete().eq('id', p.id);
+          removidos++;
+        } else {
+          const statusReal = resolverStatus(blingData?.situacao);
+          if (statusReal !== p.status) {
+            await supabase.from('pedidos').update({ status: statusReal }).eq('id', p.id);
+            corrigidos++;
+          }
         }
         await new Promise(resolve => setTimeout(resolve, 300));
       } catch {}
     }
-    res.json({ ok: true, verificados: pedidosDB?.length || 0, corrigidos });
+    res.json({ ok: true, verificados: pedidosDB?.length || 0, corrigidos, removidos });
   } catch (err) {
     res.status(500).json({ erro: err.message });
   }
