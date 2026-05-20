@@ -1160,7 +1160,9 @@ app.post('/api/admin/corrigir-status-bling', async (req, res) => {
       try {
         const r = await axios.get(`https://www.bling.com.br/Api/v3/pedidos/vendas/${blingId}`, { headers: { Authorization: `Bearer ${token}` } });
         const blingData = r.data?.data;
-        const naoEhConcluido = Number(blingData?.situacao?.valor) !== 1;
+        const situacaoId = Number(blingData?.situacao?.id);
+        const situacaoValor = Number(blingData?.situacao?.valor);
+        const naoEhConcluido = situacaoValor !== 1 && !SITUACOES_CONCLUIDAS.has(situacaoId);
         if (naoEhConcluido) {
           // Remove do CRM pedidos que não são mais concluídos
           await supabase.from('pedidos').delete().eq('id', p.id);
