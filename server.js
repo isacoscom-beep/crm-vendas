@@ -964,17 +964,19 @@ app.get('/api/bling/debug', async (req, res) => {
 // BLING — Callback OAuth (autorização inicial)
 // ============================================================
 app.get('/bling/auth', (req, res) => {
-  const url = `https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=${process.env.BLING_CLIENT_ID}&redirect_uri=https://handsome-forgiveness-production-a14c.up.railway.app/bling/callback`;
+  const baseUrl = process.env.APP_URL || 'https://crm-vendas-rjoy.onrender.com';
+  const url = `https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=${process.env.BLING_CLIENT_ID}&redirect_uri=${baseUrl}/bling/callback`;
   res.redirect(url);
 });
 
 app.get('/bling/callback', async (req, res) => {
   const { code } = req.query;
   if (!code) return res.status(400).json({ erro: 'Código não recebido' });
+  const baseUrl = process.env.APP_URL || 'https://crm-vendas-rjoy.onrender.com';
   try {
     const credentials = Buffer.from(`${process.env.BLING_CLIENT_ID}:${process.env.BLING_CLIENT_SECRET}`).toString('base64');
     const response = await axios.post('https://www.bling.com.br/Api/v3/oauth/token',
-      `grant_type=authorization_code&code=${code}&redirect_uri=https://handsome-forgiveness-production-a14c.up.railway.app/bling/callback`,
+      `grant_type=authorization_code&code=${code}&redirect_uri=${baseUrl}/bling/callback`,
       { headers: { Authorization: `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
     blingAccessToken = response.data.access_token;
