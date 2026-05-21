@@ -471,7 +471,7 @@ app.get('/api/analytics/unica-compra', async (req, res) => {
 // Clientes recorrentes com período médio de recompra
 app.get('/api/analytics/recorrentes', async (req, res) => {
   try {
-    const { canal, status_recorrencia } = req.query;
+    const { canal, status_recorrencia, excluir_perdidos } = req.query;
     const pedidos = await buscarTodosPedidos();
     const mapa = agruparPorCliente(pedidos);
     const agora = new Date();
@@ -499,9 +499,13 @@ app.get('/api/analytics/recorrentes', async (req, res) => {
       const diasSemComprar = Math.floor((agora - ultimaCompra) / 86400000);
       const proximaCompraEstimada = new Date(ultimaCompra.getTime() + mediaRecorrenciaDias * 86400000);
       const diasParaProxima = Math.floor((proximaCompraEstimada - agora) / 86400000);
-      const statusRec = diasParaProxima < 0 ? 'atrasado' : diasParaProxima <= 7 ? 'proximo' : 'em_dia';
+      let statusRec;
+      if (diasSemComprar >= mediaRecorrenciaDias * 2) statusRec = 'perdido';
+      else if (diasSemComprar >= mediaRecorrenciaDias * 0.8) statusRec = 'proximo';
+      else statusRec = 'em_dia';
 
       if (status_recorrencia && statusRec !== status_recorrencia) continue;
+      if (excluir_perdidos === '1' && statusRec === 'perdido') continue;
 
       resultado.push({
         cliente: nome,

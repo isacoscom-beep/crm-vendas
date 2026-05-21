@@ -178,7 +178,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="sb-item" onclick="nav('relatorios',this)"><span class="ico">📈</span>Relatórios</div>
   <div class="sb-item" onclick="nav('estrategia',this)"><span class="ico">🎯</span>Estratégia</div>
   <div class="sb-item" onclick="nav('notificacoes',this)"><span class="ico">🔔</span>Notificações <span class="sb-badge" id="badge-notif" style="display:none">0</span></div>
-  <div class="sb-item" onclick="nav('segmentos',this)"><span class="ico">🎯</span>Segmentos WA</div>
+  <div class="sb-item" onclick="nav('segmentos',this)"><span class="ico">📡</span>Monitoramento de Clientes</div>
   <div class="sb-sec">Config</div>
   <div class="sb-item" onclick="importarCSV()"><span class="ico">📥</span>Importar Planilha</div>
   <div class="sb-item" onclick="exportarClientes()"><span class="ico">📤</span>Exportar Dados</div>
@@ -445,8 +445,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 <!-- SEGMENTOS -->
 <div id="page-segmentos" class="page">
   <div style="display:flex;gap:8px;margin-bottom:20px">
-    <button class="btn primary" id="tab-rec" onclick="switchSegTab('rec')">🔄 Clientes Recorrentes</button>
+    <button class="btn primary" id="tab-rec" onclick="switchSegTab('rec')">🔄 Recorrentes Ativos</button>
     <button class="btn" id="tab-uni" onclick="switchSegTab('uni')">1️⃣ Compra Única</button>
+    <button class="btn" id="tab-per" onclick="switchSegTab('per')">⚠️ Recorrentes Perdidos</button>
   </div>
 
   <div id="panel-rec">
@@ -455,7 +456,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <span class="card-title">Clientes Recorrentes <span class="card-sub">(com WhatsApp)</span></span>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <select id="seg-rec-canal" class="btn" onchange="loadRecorrentes()"><option value="">Todos os Canais</option><option>WhatsApp</option><option>Mercado Livre</option><option>Shopee</option><option>Amazon</option></select>
-          <select id="seg-rec-status" class="btn" onchange="loadRecorrentes()"><option value="">Todos os Status</option><option value="proximo">Próximos (≤7 dias)</option><option value="atrasado">Atrasados</option><option value="em_dia">Em dia</option></select>
+          <select id="seg-rec-status" class="btn" onchange="loadRecorrentes()"><option value="">Todos os Status</option><option value="proximo">Comprar em Breve (≥80%)</option><option value="em_dia">Em dia</option></select>
           <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;white-space:nowrap"><input type="checkbox" id="seg-rec-soWA" onchange="loadRecorrentes()"> Só com WhatsApp</label>
           <button class="btn" onclick="loadRecorrentes()">🔄</button>
         </div>
@@ -473,6 +474,32 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <tbody id="tbl-rec"></tbody>
       </table></div>
       <div id="rec-empty" class="empty" style="display:none"><div class="ei">🔄</div><p>Nenhum cliente recorrente encontrado com os filtros selecionados.</p></div>
+    </div>
+  </div>
+
+  <div id="panel-per" style="display:none">
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-title">Recorrentes Perdidos <span class="card-sub">(sem compra há +2x o ciclo deles)</span></span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select id="seg-per-canal" class="btn" onchange="loadPerdidos()"><option value="">Todos os Canais</option><option>WhatsApp</option><option>Mercado Livre</option><option>Shopee</option><option>Amazon</option></select>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;white-space:nowrap"><input type="checkbox" id="seg-per-soWA" onchange="loadPerdidos()"> Só com WhatsApp</label>
+          <button class="btn" onclick="loadPerdidos()">🔄</button>
+        </div>
+      </div>
+      <div class="fg" style="margin-bottom:12px">
+        <label style="font-size:10px;font-weight:600;color:var(--text3)">MENSAGEM DE RESGATE — use {nome} e {periodicidade}</label>
+        <textarea id="msg-per" style="width:100%;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2);padding:8px 11px;font-family:'DM Sans',sans-serif;resize:vertical;min-height:70px">Olá {nome}! 😊 Sentimos sua falta! Você costumava comprar conosco a cada {periodicidade} dias e faz um tempo que não te vemos. Tem alguma novidade que posso te apresentar? 🌿</textarea>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <span id="seg-per-count" style="font-size:12px;color:var(--text2)">—</span>
+        <button class="btn primary" onclick="dispararSegmento('per')">📤 Enviar para todos filtrados</button>
+      </div>
+      <div class="tbl-wrap"><table class="tbl">
+        <thead><tr><th>Cliente</th><th>WhatsApp</th><th>Canais</th><th>Compras</th><th>Ciclo Médio</th><th>Última Compra</th><th>Dias s/ Comprar</th></tr></thead>
+        <tbody id="tbl-per"></tbody>
+      </table></div>
+      <div id="per-empty" class="empty" style="display:none"><div class="ei">⚠️</div><p>Nenhum cliente recorrente perdido encontrado.</p></div>
     </div>
   </div>
 
@@ -530,7 +557,7 @@ const pageActions = {
   relatorios:{ title:'Relatórios', btn:'', modal:'' },
   estrategia:{ title:'Estratégia', btn:'', modal:'' },
   notificacoes:{ title:'Notificações', btn:'', modal:'' },
-  segmentos:{ title:'Segmentos de Clientes', btn:'', modal:'' },
+  segmentos:{ title:'Monitoramento de Clientes', btn:'', modal:'' },
 };
 
 function nav(id, el) {
@@ -1234,19 +1261,22 @@ async function loadSegmentos() {
 function switchSegTab(tab) {
   document.getElementById('panel-rec').style.display = tab === 'rec' ? '' : 'none';
   document.getElementById('panel-uni').style.display = tab === 'uni' ? '' : 'none';
+  document.getElementById('panel-per').style.display = tab === 'per' ? '' : 'none';
   document.getElementById('tab-rec').className = 'btn' + (tab === 'rec' ? ' primary' : '');
   document.getElementById('tab-uni').className = 'btn' + (tab === 'uni' ? ' primary' : '');
+  document.getElementById('tab-per').className = 'btn' + (tab === 'per' ? ' primary' : '');
   if (tab === 'rec') loadRecorrentes();
   if (tab === 'uni') loadUnicaCompra();
+  if (tab === 'per') loadPerdidos();
 }
 
 async function loadRecorrentes() {
   const canal = document.getElementById('seg-rec-canal')?.value || '';
   const status = document.getElementById('seg-rec-status')?.value || '';
-  const params = [];
+  const params = ['excluir_perdidos=1'];
   if (canal) params.push('canal=' + encodeURIComponent(canal));
   if (status) params.push('status_recorrencia=' + status);
-  const path = '/api/analytics/recorrentes' + (params.length ? '?' + params.join('&') : '');
+  const path = '/api/analytics/recorrentes?' + params.join('&');
   const r = await api(path);
   dadosRec = r?.clientes || [];
   const soWARec = document.getElementById('seg-rec-soWA')?.checked;
@@ -1274,6 +1304,31 @@ async function loadRecorrentes() {
   }).join('');
 }
 
+let dadosPer = [];
+async function loadPerdidos() {
+  const canal = document.getElementById('seg-per-canal')?.value || '';
+  const path = '/api/analytics/recorrentes?status_recorrencia=perdido' + (canal ? '&canal=' + encodeURIComponent(canal) : '');
+  const r = await api(path);
+  dadosPer = r?.clientes || [];
+  const soWA = document.getElementById('seg-per-soWA')?.checked;
+  const lista = soWA ? dadosPer.filter(c => c.whatsapp) : dadosPer;
+  const tbody = document.getElementById('tbl-per');
+  const empty = document.getElementById('per-empty');
+  const comWA = dadosPer.filter(c => c.whatsapp).length;
+  document.getElementById('seg-per-count').textContent = `${lista.length} cliente(s) — ${comWA} com WhatsApp`;
+  if (!lista.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = lista.map(c => `<tr style="${!c.whatsapp ? 'opacity:.5' : ''}">
+    <td><strong>${c.cliente}</strong></td>
+    <td>${c.whatsapp ? `<span class="badge bg">WA</span> <span style="font-size:10px;color:var(--text3)">${formatWA(c.whatsapp)}</span>` : '<span class="badge bgr">—</span>'}</td>
+    <td>${(c.canais||[]).map(ch => badgeCanal(ch)).join(' ')}</td>
+    <td>${c.total_compras}</td>
+    <td>A cada ${c.media_recorrencia_dias}d</td>
+    <td>${c.ultima_compra ? new Date(c.ultima_compra+'T12:00:00').toLocaleDateString('pt-BR') : '—'}</td>
+    <td><span class="badge br">${c.dias_sem_comprar}d</span></td>
+  </tr>`).join('');
+}
+
 async function loadUnicaCompra() {
   const canal = document.getElementById('seg-uni-canal')?.value || '';
   const path = '/api/analytics/unica-compra' + (canal ? '?canal=' + encodeURIComponent(canal) : '');
@@ -1299,8 +1354,8 @@ async function loadUnicaCompra() {
 }
 
 async function dispararSegmento(tipo) {
-  const todos = tipo === 'rec' ? dadosRec : dadosUni;
-  const soWA = document.getElementById(tipo === 'rec' ? 'seg-rec-soWA' : 'seg-uni-soWA')?.checked;
+  const todos = tipo === 'rec' ? dadosRec : tipo === 'per' ? dadosPer : dadosUni;
+  const soWA = document.getElementById(tipo === 'rec' ? 'seg-rec-soWA' : tipo === 'per' ? 'seg-per-soWA' : 'seg-uni-soWA')?.checked;
   const dados = soWA ? todos.filter(c => c.whatsapp) : todos;
   const mensagem = document.getElementById('msg-' + tipo)?.value?.trim();
   if (!dados.length) { toast('⚠ Nenhum cliente na lista atual'); return; }
