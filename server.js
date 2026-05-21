@@ -777,7 +777,7 @@ async function sincronizarBlingPedidos() {
   while (continuar) {
     const response = await axios.get('https://www.bling.com.br/Api/v3/pedidos/vendas', {
       headers: { Authorization: `Bearer ${token}` },
-      params: { pagina, limite: 100, dataInicial: '2020-01-01' },
+      params: { pagina, limite: 100, dataInicial: '01/01/2020' },
     });
     const pedidosBling = response.data?.data || [];
     if (!pedidosBling.length) { continuar = false; break; }
@@ -1148,7 +1148,7 @@ app.get('/api/debug/bling-contagem-status', async (req, res) => {
     while (continuar && pagina <= 10) {
       const r = await axios.get('https://www.bling.com.br/Api/v3/pedidos/vendas', {
         headers: { Authorization: `Bearer ${token}` },
-        params: { pagina, limite: 100, dataInicial: '2020-01-01' },
+        params: { pagina, limite: 100, dataInicial: '01/01/2020' },
       });
       const pedidos = r.data?.data || [];
       if (!pedidos.length) { continuar = false; break; }
