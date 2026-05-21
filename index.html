@@ -229,10 +229,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="card">
     <div class="card-hdr">
       <span class="card-title">Clientes Cadastrados</span>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <select id="fil-tipo" class="btn" onchange="renderClientes()"><option value="">Todos os Tipos</option><option value="Cliente">Cliente</option><option value="Contato">Contato / Prospect</option></select>
         <select id="fil-status" class="btn" onchange="renderClientes()"><option value="">Todos os Status</option><option>Ativo</option><option>Seguimento</option><option>Inativo</option></select>
         <select id="fil-cidade" class="btn" onchange="renderClientes()"><option value="">Todas as Cidades</option></select>
         <select id="fil-contato" class="btn" onchange="renderClientes()"><option value="">Todos os Contatos</option><option value="whatsapp">Com WhatsApp</option><option value="email">Com Email</option><option value="sem">Sem Contato</option></select>
+        <button class="btn success" onclick="msgMassaContatos()" id="btn-msg-massa" style="display:none">📤 Msg em Massa</button>
         <button class="btn primary" onclick="openModal('cliente')">+ Novo</button>
       </div>
     </div>
@@ -618,11 +620,18 @@ async function loadClientes() {
     <div class="metric"><div class="lbl">Cidades</div><div class="val">${cidades.length}</div></div>`;
 }
 
+function badgeTipo(tipo) {
+  if (tipo === 'Cliente') return '<span class="badge bg" style="background:#10b981">Cliente</span>';
+  return '<span class="badge" style="background:#f59e0b;color:#fff">Prospect</span>';
+}
+
 function renderClientes() {
+  const ft = document.getElementById('fil-tipo')?.value || '';
   const fs = document.getElementById('fil-status')?.value || '';
   const fc = document.getElementById('fil-cidade')?.value || '';
   const fct = document.getElementById('fil-contato')?.value || '';
   const filtered = todosClientes.filter(c =>
+    (!ft || (c.tipo || 'Contato') === ft) &&
     (!fs || c.status === fs) &&
     (!fc || c.cidade === fc) &&
     (!fct ||
@@ -631,12 +640,14 @@ function renderClientes() {
       (fct === 'sem' && !c.whatsapp && !c.email)
     )
   );
+  const btnMassa = document.getElementById('btn-msg-massa');
+  if (btnMassa) btnMassa.style.display = ft === 'Contato' ? '' : 'none';
   const tbody = document.getElementById('tbl-clientes');
   const empty = document.getElementById('cli-empty');
   if (!filtered.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
   empty.style.display = 'none';
   tbody.innerHTML = filtered.map(c => `<tr>
-    <td><strong>${c.nome}</strong></td>
+    <td><strong>${c.nome}</strong><br>${badgeTipo(c.tipo || 'Contato')}</td>
     <td>${c.cidade || '—'}</td>
     <td>${c.whatsapp ? `<span class="badge bg">WA</span> <span style="font-size:10px;color:var(--text3)">${formatWA(c.whatsapp)}</span>` : '<span class="badge bgr">—</span>'}</td>
     <td>${c.email ? `<span class="badge bb">Email</span> <span style="font-size:10px;color:var(--text3)">${c.email}</span>` : '<span class="badge bgr">—</span>'}</td>
@@ -648,6 +659,24 @@ function renderClientes() {
       <button class="btn danger" onclick="delCliente('${c.id}')" style="font-size:11px;padding:3px 8px;margin-left:4px">🗑</button>
     </td>
   </tr>`).join('');
+}
+
+async function msgMassaContatos() {
+  const contatos = todosClientes.filter(c => (c.tipo || 'Contato') === 'Contato' && c.whatsapp);
+  if (!contatos.length) { alert('Nenhum contato/prospect com WhatsApp encontrado.'); return; }
+  const msg = prompt(`Enviar mensagem para ${contatos.length} contatos/prospects com WhatsApp.\n\nDigite a mensagem (use {nome} para personalizar):`);
+  if (!msg) return;
+  if (!confirm(`Confirma envio para ${contatos.length} contatos?`)) return;
+  let enviados = 0, erros = 0;
+  for (const c of contatos) {
+    const texto = msg.replace(/\{nome\}/g, c.nome.split(' ')[0]);
+    try {
+      await api('/api/whatsapp/enviar', 'POST', { numero: c.whatsapp, mensagem: texto });
+      enviados++;
+      await new Promise(r => setTimeout(r, 1200));
+    } catch { erros++; }
+  }
+  alert(`Enviado! ${enviados} mensagens enviadas, ${erros} erros.`);
 }
 
 function buscarCliente(q) {

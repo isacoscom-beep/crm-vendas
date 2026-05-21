@@ -212,11 +212,12 @@ async function processarMensagemCliente(numero, mensagem) {
 // API — CLIENTES
 // ============================================================
 app.get('/api/clientes', async (req, res) => {
-  const { rota, status, busca } = req.query;
+  const { rota, status, busca, tipo } = req.query;
   let query = supabase.from('clientes').select('*').order('nome');
   if (rota) query = query.eq('rota', rota);
   if (status) query = query.eq('status', status);
   if (busca) query = query.ilike('nome', `%${busca}%`);
+  if (tipo) query = query.eq('tipo', tipo);
   const { data, error } = await query;
   if (error) return res.status(500).json({ erro: error.message });
   res.json(data);
@@ -845,9 +846,12 @@ async function sincronizarBlingContatos() {
       const existente = (todosClientes || []).find(x => normalizarNome(x.nome) === nomeNorm);
 
       if (existente) {
-        if (!existente.whatsapp) {
-          await supabase.from('clientes').update({ whatsapp: wa, email: c.email || existente.email }).eq('id', existente.id);
-          existente.whatsapp = wa;
+        const updates = {};
+        if (!existente.whatsapp) updates.whatsapp = wa;
+        if (c.email && !existente.email) updates.email = c.email;
+        if (Object.keys(updates).length) {
+          await supabase.from('clientes').update(updates).eq('id', existente.id);
+          Object.assign(existente, updates);
           atualizados++;
         }
       } else {
@@ -857,6 +861,7 @@ async function sincronizarBlingContatos() {
           email: c.email || null,
           canal: 'WhatsApp',
           status: 'Ativo',
+          tipo: 'Contato',
           criado_em: new Date().toISOString(),
         }, { onConflict: 'whatsapp' });
         todosClientes.push({ nome: c.nome.trim(), whatsapp: wa, email: c.email || null });
@@ -868,6 +873,19 @@ async function sincronizarBlingContatos() {
     if (contatos.length < 100) continuar = false;
     await new Promise(r => setTimeout(r, 400));
   }
+
+  // Marca como 'Cliente' quem tem pedido concluído
+  const { data: pedidosNomes } = await supabase.from('pedidos').select('cliente_nome').ilike('status', 'Atendido%');
+  const nomesComPedido = [...new Set((pedidosNomes || []).map(p => normalizarNome(p.cliente_nome)))];
+  if (nomesComPedido.length) {
+    const { data: clientesDB } = await supabase.from('clientes').select('id, nome');
+    for (const cl of clientesDB || []) {
+      if (nomesComPedido.includes(normalizarNome(cl.nome))) {
+        await supabase.from('clientes').update({ tipo: 'Cliente' }).eq('id', cl.id);
+      }
+    }
+  }
+
   return { ok: true, atualizados, criados };
 }
 
