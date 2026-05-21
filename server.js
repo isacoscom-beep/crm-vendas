@@ -1139,6 +1139,34 @@ app.get('/api/debug/bling-situacoes-lista', async (req, res) => {
   }
 });
 
+app.get('/api/debug/bling-contagem-status', async (req, res) => {
+  try {
+    const token = await getBlingToken();
+    if (!token) return res.status(500).json({ erro: 'Bling não autenticado' });
+    const contagem = {};
+    let pagina = 1, total = 0, continuar = true;
+    while (continuar && pagina <= 10) {
+      const r = await axios.get('https://www.bling.com.br/Api/v3/pedidos/vendas', {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { pagina, limite: 100, dataInicial: '2020-01-01' },
+      });
+      const pedidos = r.data?.data || [];
+      if (!pedidos.length) { continuar = false; break; }
+      for (const p of pedidos) {
+        const key = `id${p.situacao?.id}_valor${p.situacao?.valor}`;
+        contagem[key] = (contagem[key] || 0) + 1;
+        total++;
+      }
+      pagina++;
+      await new Promise(r => setTimeout(r, 300));
+      if (pedidos.length < 100) continuar = false;
+    }
+    res.json({ total_retornado: total, paginas: pagina - 1, contagem_por_status: contagem });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
 app.get('/api/debug/pedidos', async (req, res) => {
   const { nome } = req.query;
   let query = supabase.from('pedidos').select('id, id_externo, cliente_nome, status, valor, criado_em, canal').order('criado_em', { ascending: false }).limit(50);
