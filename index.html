@@ -1111,9 +1111,16 @@ function processCSV(input) {
       });
       if (obj.nome) clientes.push(obj);
     }
-    toast(`📥 Importando ${clientes.length} clientes...`);
+    toast(`📥 Importando ${clientes.length} registros...`);
     const r = await api('/api/importar-clientes', 'POST', { clientes });
-    if (r) { toast(`✓ ${r.inseridos} clientes importados!`); nav('clientes', document.querySelector('[onclick*=clientes]')); }
+    if (r) {
+      const partes = [];
+      if (r.atualizados) partes.push(`${r.atualizados} atualizados`);
+      if (r.inseridos) partes.push(`${r.inseridos} novos`);
+      if (r.sem_match) partes.push(`${r.sem_match} sem correspondência`);
+      toast(`✓ ${partes.join(' · ') || 'Nenhuma alteração'}`);
+      nav('clientes', document.querySelector('[onclick*=clientes]'));
+    }
     input.value = '';
   };
   reader.readAsText(file, 'UTF-8');

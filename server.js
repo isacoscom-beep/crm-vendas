@@ -1045,21 +1045,48 @@ app.post('/api/importar-clientes', async (req, res) => {
   const { clientes } = req.body;
   if (!clientes?.length) return res.status(400).json({ erro: 'Nenhum cliente enviado' });
 
-  const inseridos = [];
+  const { data: todosDB } = await supabase.from('clientes').select('id, nome, whatsapp');
+
+  let atualizados = 0, inseridos = 0, semMatch = 0;
+
   for (const c of clientes) {
-    const { data } = await supabase.from('clientes').upsert({
-      nome: c.nome,
-      whatsapp: c.whatsapp?.replace(/\D/g, ''),
-      email: c.email,
-      cidade: c.cidade || c.regiao,
-      rota: c.rota,
-      canal: c.canal || 'WhatsApp',
-      status: c.status || 'Ativo',
-      criado_em: new Date().toISOString(),
-    }, { onConflict: 'whatsapp' }).select().single();
-    if (data) inseridos.push(data);
+    const wa = c.whatsapp?.replace(/\D/g, '') || null;
+    const nomeNorm = normalizarNome(c.nome);
+
+    // Tenta encontrar pelo nome (busca normalizada)
+    const existente = (todosDB || []).find(x => normalizarNome(x.nome) === nomeNorm);
+
+    if (existente) {
+      // Atualiza WhatsApp (e outros campos se enviados)
+      const updates = {};
+      if (wa) updates.whatsapp = wa;
+      if (c.email) updates.email = c.email;
+      if (c.cidade || c.regiao) updates.cidade = c.cidade || c.regiao;
+      if (Object.keys(updates).length) {
+        await supabase.from('clientes').update(updates).eq('id', existente.id);
+        // Atualiza cache local para evitar conflito de WA duplicado
+        existente.whatsapp = wa || existente.whatsapp;
+        atualizados++;
+      }
+    } else if (wa) {
+      // Não encontrou pelo nome — insere novo (upsert por whatsapp)
+      await supabase.from('clientes').upsert({
+        nome: c.nome,
+        whatsapp: wa,
+        email: c.email || null,
+        cidade: c.cidade || c.regiao || null,
+        rota: c.rota || null,
+        canal: c.canal || 'WhatsApp',
+        status: c.status || 'Ativo',
+        criado_em: new Date().toISOString(),
+      }, { onConflict: 'whatsapp' });
+      inseridos++;
+    } else {
+      semMatch++;
+    }
   }
-  res.json({ inseridos: inseridos.length });
+
+  res.json({ atualizados, inseridos, sem_match: semMatch, total: clientes.length });
 });
 
 // ============================================================
