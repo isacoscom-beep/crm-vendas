@@ -1263,6 +1263,86 @@ app.post('/api/disparar-lista', async (req, res) => {
 });
 
 // ============================================================
+// FILA DE DISPAROS — endpoints
+// ============================================================
+app.post('/api/fila-disparos', async (req, res) => {
+  const { clientes, mensagem, segmento, limite_diario } = req.body;
+  if (!clientes?.length || !mensagem) return res.status(400).json({ erro: 'Dados inválidos' });
+  const registros = clientes.map(c => ({
+    whatsapp: c.whatsapp,
+    cliente_nome: c.cliente || c.nome || '',
+    mensagem: mensagem.replace('{periodicidade}', c.media_recorrencia_dias || '?'),
+    segmento: segmento || 'manual',
+    status: 'pendente',
+  }));
+  const { error } = await supabase.from('fila_disparos').insert(registros);
+  if (error) return res.status(500).json({ erro: error.message });
+  res.json({ ok: true, agendados: registros.length, limite_diario: limite_diario || 30 });
+});
+
+app.get('/api/fila-disparos', async (req, res) => {
+  const { data: pendentes } = await supabase.from('fila_disparos').select('*').eq('status', 'pendente').order('criado_em');
+  const { data: enviados } = await supabase.from('fila_disparos').select('id, cliente_nome, enviado_em').eq('status', 'enviado').order('enviado_em', { ascending: false }).limit(50);
+  const { data: falhos } = await supabase.from('fila_disparos').select('id, cliente_nome, erro').eq('status', 'falhou').order('criado_em', { ascending: false }).limit(20);
+  res.json({ pendentes: pendentes || [], enviados: enviados || [], falhos: falhos || [] });
+});
+
+app.post('/api/fila-disparos/cancelar', async (req, res) => {
+  const { error } = await supabase.from('fila_disparos').update({ status: 'cancelado' }).eq('status', 'pendente');
+  if (error) return res.status(500).json({ erro: error.message });
+  res.json({ ok: true });
+});
+
+app.get('/api/fila-disparos/config', async (req, res) => {
+  const { data } = await supabase.from('configuracoes').select('valor').eq('chave', 'fila_limite_diario').single();
+  res.json({ limite_diario: parseInt(data?.valor || '30') });
+});
+
+app.post('/api/fila-disparos/config', async (req, res) => {
+  const { limite_diario } = req.body;
+  await supabase.from('configuracoes').upsert({ chave: 'fila_limite_diario', valor: String(limite_diario || 30) }, { onConflict: 'chave' });
+  res.json({ ok: true });
+});
+
+async function processarFilaDisparos() {
+  const agora = new Date();
+  const hora = agora.getHours();
+  if (hora < 8 || hora >= 18) return; // só entre 8h e 18h
+
+  const { data: cfg } = await supabase.from('configuracoes').select('valor').eq('chave', 'fila_limite_diario').single();
+  const limiteDiario = parseInt(cfg?.valor || '30');
+
+  const inicioDia = new Date(); inicioDia.setHours(0,0,0,0);
+  const { count: enviadosHoje } = await supabase.from('fila_disparos').select('*', { count: 'exact', head: true })
+    .eq('status', 'enviado').gte('enviado_em', inicioDia.toISOString());
+
+  const restante = limiteDiario - (enviadosHoje || 0);
+  if (restante <= 0) { console.log('[Fila] Limite diário atingido:', limiteDiario); return; }
+
+  const { data: fila } = await supabase.from('fila_disparos').select('*').eq('status', 'pendente').order('criado_em').limit(restante);
+  if (!fila?.length) return;
+
+  console.log(`[Fila] Processando ${fila.length} disparos (limite restante: ${restante})`);
+  for (const item of fila) {
+    try {
+      const resultado = await enviarWhatsapp(item.whatsapp, item.mensagem);
+      if (resultado.ok) {
+        await supabase.from('fila_disparos').update({ status: 'enviado', enviado_em: new Date().toISOString() }).eq('id', item.id);
+        console.log(`[Fila] Enviado para ${item.cliente_nome} (${item.whatsapp})`);
+      } else {
+        await supabase.from('fila_disparos').update({ status: 'falhou', erro: resultado.erro || 'Erro desconhecido' }).eq('id', item.id);
+      }
+    } catch (err) {
+      await supabase.from('fila_disparos').update({ status: 'falhou', erro: err.message }).eq('id', item.id);
+    }
+    await new Promise(r => setTimeout(r, 4000)); // 4 segundos entre mensagens
+  }
+}
+
+// Processa fila a cada 1 hora
+setInterval(processarFilaDisparos, 60 * 60 * 1000);
+
+// ============================================================
 // SINCRONIZAÇÃO AUTOMÁTICA A CADA 6 HORAS
 // ============================================================
 const SEIS_HORAS = 6 * 60 * 60 * 1000;

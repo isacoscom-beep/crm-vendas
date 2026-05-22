@@ -465,12 +465,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <label style="font-size:10px;font-weight:600;color:var(--text3)">MENSAGEM — use {nome} e {periodicidade}</label>
         <textarea id="msg-rec" style="width:100%;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2);padding:8px 11px;font-family:'DM Sans',sans-serif;resize:vertical;min-height:70px">Olá! 😊 Notamos que você costuma fazer pedidos a cada {periodicidade} dias. Está chegando a hora de reabastecer! Posso separar alguma coisa para você? 🌿</textarea>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <span id="seg-rec-count" style="font-size:12px;color:var(--text2)">—</span>
-        <button class="btn primary" onclick="dispararSegmento('rec')">📤 Enviar para todos filtrados</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span id="seg-rec-count" style="font-size:12px;color:var(--text2)">—</span>
+          <span id="seg-rec-sel" style="font-size:12px;color:var(--blue);font-weight:600;display:none">· 0 selecionados</span>
+          <button class="btn" style="font-size:11px" onclick="selecionarTodos('rec',true)">✓ Todos</button>
+          <button class="btn" style="font-size:11px" onclick="selecionarTodos('rec',false)">✗ Nenhum</button>
+        </div>
+        <button class="btn primary" onclick="agendarDisparo('rec')">📅 Agendar Disparo</button>
       </div>
       <div class="tbl-wrap"><table class="tbl">
-        <thead><tr><th>Cliente</th><th>WhatsApp</th><th>Email</th><th>Canais</th><th>Compras</th><th>Periodicidade</th><th>Última Compra</th><th>Próxima Est.</th><th>Status</th></tr></thead>
+        <thead><tr><th style="width:30px;text-align:center"></th><th>Cliente</th><th>WhatsApp</th><th>Email</th><th>Canais</th><th>Compras</th><th>Periodicidade</th><th>Última Compra</th><th>Próxima Est.</th><th>Status</th></tr></thead>
         <tbody id="tbl-rec"></tbody>
       </table></div>
       <div id="rec-empty" class="empty" style="display:none"><div class="ei">🔄</div><p>Nenhum cliente recorrente encontrado com os filtros selecionados.</p></div>
@@ -491,12 +496,17 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <label style="font-size:10px;font-weight:600;color:var(--text3)">MENSAGEM DE RESGATE — use {nome} e {periodicidade}</label>
         <textarea id="msg-per" style="width:100%;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2);padding:8px 11px;font-family:'DM Sans',sans-serif;resize:vertical;min-height:70px">Olá! 😊 Sentimos sua falta! Faz um tempo que não recebemos seu pedido. Tem alguma novidade que posso te apresentar? 🌿</textarea>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <span id="seg-per-count" style="font-size:12px;color:var(--text2)">—</span>
-        <button class="btn primary" onclick="dispararSegmento('per')">📤 Enviar para todos filtrados</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span id="seg-per-count" style="font-size:12px;color:var(--text2)">—</span>
+          <span id="seg-per-sel" style="font-size:12px;color:var(--blue);font-weight:600;display:none">· 0 selecionados</span>
+          <button class="btn" style="font-size:11px" onclick="selecionarTodos('per',true)">✓ Todos</button>
+          <button class="btn" style="font-size:11px" onclick="selecionarTodos('per',false)">✗ Nenhum</button>
+        </div>
+        <button class="btn primary" onclick="agendarDisparo('per')">📅 Agendar Disparo</button>
       </div>
       <div class="tbl-wrap"><table class="tbl">
-        <thead><tr><th>Cliente</th><th>WhatsApp</th><th>Canais</th><th>Compras</th><th>Ciclo Médio</th><th>Última Compra</th><th>Dias s/ Comprar</th></tr></thead>
+        <thead><tr><th style="width:30px;text-align:center"></th><th>Cliente</th><th>WhatsApp</th><th>Canais</th><th>Compras</th><th>Ciclo Médio</th><th>Última Compra</th><th>Dias s/ Comprar</th></tr></thead>
         <tbody id="tbl-per"></tbody>
       </table></div>
       <div id="per-empty" class="empty" style="display:none"><div class="ei">⚠️</div><p>Nenhum cliente recorrente perdido encontrado.</p></div>
@@ -517,17 +527,46 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         <label style="font-size:10px;font-weight:600;color:var(--text3)">MENSAGEM DE RESGATE — use {nome}</label>
         <textarea id="msg-uni" style="width:100%;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2);padding:8px 11px;font-family:'DM Sans',sans-serif;resize:vertical;min-height:70px">Olá! 😊 Faz um tempo desde sua última compra conosco. Temos produtos fresquinhos e novidades esperando por você! Que tal fazer um novo pedido? 🌿</textarea>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <span id="seg-uni-count" style="font-size:12px;color:var(--text2)">—</span>
-        <button class="btn primary" onclick="dispararSegmento('uni')">📤 Enviar para todos filtrados</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span id="seg-uni-count" style="font-size:12px;color:var(--text2)">—</span>
+          <span id="seg-uni-sel" style="font-size:12px;color:var(--blue);font-weight:600;display:none">· 0 selecionados</span>
+          <button class="btn" style="font-size:11px" onclick="selecionarTodos('uni',true)">✓ Todos</button>
+          <button class="btn" style="font-size:11px" onclick="selecionarTodos('uni',false)">✗ Nenhum</button>
+        </div>
+        <button class="btn primary" onclick="agendarDisparo('uni')">📅 Agendar Disparo</button>
       </div>
       <div class="tbl-wrap"><table class="tbl">
-        <thead><tr><th>Cliente</th><th>WhatsApp</th><th>Email</th><th>Canal</th><th>Data Compra</th><th>Dias s/ Comprar</th><th>Total Gasto</th></tr></thead>
+        <thead><tr><th style="width:30px;text-align:center"></th><th>Cliente</th><th>WhatsApp</th><th>Email</th><th>Canal</th><th>Data Compra</th><th>Dias s/ Comprar</th><th>Total Gasto</th></tr></thead>
         <tbody id="tbl-uni"></tbody>
       </table></div>
       <div id="uni-empty" class="empty" style="display:none"><div class="ei">1️⃣</div><p>Nenhum cliente com compra única encontrado.</p></div>
     </div>
   </div>
+
+  <!-- Fila de Disparos -->
+  <div class="card" id="card-fila" style="margin-top:4px;display:none">
+    <div class="card-hdr">
+      <span class="card-title">Fila de Disparos</span>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px">
+          <label style="font-size:11px;font-weight:600;color:var(--text2);white-space:nowrap">Limite/dia:</label>
+          <input type="number" id="fila-limite" value="30" min="1" max="200" style="width:65px;padding:5px 8px;border-radius:var(--radius);border:1px solid var(--border2);font-size:12px">
+          <button class="btn" style="font-size:11px" onclick="salvarLimiteFila()">Salvar</button>
+        </div>
+        <button class="btn" style="font-size:11px" onclick="loadFilaStatus()">🔄</button>
+        <button class="btn danger" style="font-size:11px" onclick="cancelarFila()">✕ Cancelar Pendentes</button>
+      </div>
+    </div>
+    <div class="g3" style="margin-bottom:12px">
+      <div class="metric"><div class="lbl">Pendentes</div><div class="val" id="fila-pendentes" style="color:var(--amber)">—</div><div class="sub">na fila</div></div>
+      <div class="metric"><div class="lbl">Enviados Hoje</div><div class="val up" id="fila-enviados">—</div></div>
+      <div class="metric"><div class="lbl">Com Erro</div><div class="val dn" id="fila-erros">—</div></div>
+    </div>
+    <p style="font-size:11px;color:var(--text3);margin-bottom:10px">⏰ Processado automaticamente a cada hora, entre 8h–18h, com intervalo de 4s entre mensagens.</p>
+    <div id="fila-historico"></div>
+  </div>
+
 </div>
 
 </div><!-- /main -->
@@ -1256,6 +1295,9 @@ let dadosRec = [], dadosUni = [];
 
 async function loadSegmentos() {
   switchSegTab('rec');
+  const cardFila = document.getElementById('card-fila');
+  if (cardFila) cardFila.style.display = '';
+  loadFilaStatus();
 }
 
 function switchSegTab(tab) {
@@ -1290,7 +1332,8 @@ async function loadRecorrentes() {
   tbody.innerHTML = listaRec.map(c => {
     const sb = c.status_recorrencia === 'atrasado' ? 'br' : c.status_recorrencia === 'proximo' ? 'ba' : 'bg';
     const sl = c.status_recorrencia === 'atrasado' ? 'Atrasado' : c.status_recorrencia === 'proximo' ? 'Próximo' : 'Em dia';
-    return `<tr style="${!c.whatsapp ? 'opacity:.5' : ''}">
+    return `<tr data-nome="${encodeURIComponent(c.cliente)}" data-wa="${c.whatsapp||''}" data-per="${c.media_recorrencia_dias||''}" style="${!c.whatsapp ? 'opacity:.5' : ''}">
+      <td style="text-align:center"><input type="checkbox" class="chk-rec" ${!c.whatsapp ? 'disabled' : ''} onchange="atualizarContadorSel('rec')"></td>
       <td><strong>${c.cliente}</strong></td>
       <td>${c.whatsapp ? `<span class="badge bg">WA</span> <span style="font-size:10px;color:var(--text3)">${formatWA(c.whatsapp)}</span>` : '<span class="badge bgr">—</span>'}</td>
       <td>${c.email ? `<span class="badge bb">Email</span> <span style="font-size:10px;color:var(--text3)">${c.email}</span>` : '<span class="badge bgr">—</span>'}</td>
@@ -1318,7 +1361,8 @@ async function loadPerdidos() {
   document.getElementById('seg-per-count').textContent = `${lista.length} cliente(s) — ${comWA} com WhatsApp`;
   if (!lista.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
   empty.style.display = 'none';
-  tbody.innerHTML = lista.map(c => `<tr style="${!c.whatsapp ? 'opacity:.5' : ''}">
+  tbody.innerHTML = lista.map(c => `<tr data-nome="${encodeURIComponent(c.cliente)}" data-wa="${c.whatsapp||''}" data-per="${c.media_recorrencia_dias||''}" style="${!c.whatsapp ? 'opacity:.5' : ''}">
+    <td style="text-align:center"><input type="checkbox" class="chk-per" ${!c.whatsapp ? 'disabled' : ''} onchange="atualizarContadorSel('per')"></td>
     <td><strong>${c.cliente}</strong></td>
     <td>${c.whatsapp ? `<span class="badge bg">WA</span> <span style="font-size:10px;color:var(--text3)">${formatWA(c.whatsapp)}</span>` : '<span class="badge bgr">—</span>'}</td>
     <td>${(c.canais||[]).map(ch => badgeCanal(ch)).join(' ')}</td>
@@ -1342,7 +1386,8 @@ async function loadUnicaCompra() {
   document.getElementById('seg-uni-count').textContent = `${listaUni.length} cliente(s) — ${comWAUni} com WhatsApp`;
   if (!listaUni.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
   empty.style.display = 'none';
-  tbody.innerHTML = listaUni.map(c => `<tr style="${!c.whatsapp ? 'opacity:.5' : ''}">
+  tbody.innerHTML = listaUni.map(c => `<tr data-nome="${encodeURIComponent(c.cliente)}" data-wa="${c.whatsapp||''}" style="${!c.whatsapp ? 'opacity:.5' : ''}">
+    <td style="text-align:center"><input type="checkbox" class="chk-uni" ${!c.whatsapp ? 'disabled' : ''} onchange="atualizarContadorSel('uni')"></td>
     <td><strong>${c.cliente}</strong></td>
     <td>${c.whatsapp ? `<span class="badge bg">WA</span> <span style="font-size:10px;color:var(--text3)">${formatWA(c.whatsapp)}</span>` : '<span class="badge bgr">—</span>'}</td>
     <td>${c.email ? `<span class="badge bb">Email</span> <span style="font-size:10px;color:var(--text3)">${c.email}</span>` : '<span class="badge bgr">—</span>'}</td>
@@ -1353,22 +1398,97 @@ async function loadUnicaCompra() {
   </tr>`).join('');
 }
 
-async function dispararSegmento(tipo) {
-  const todos = tipo === 'rec' ? dadosRec : tipo === 'per' ? dadosPer : dadosUni;
-  const soWA = document.getElementById(tipo === 'rec' ? 'seg-rec-soWA' : tipo === 'per' ? 'seg-per-soWA' : 'seg-uni-soWA')?.checked;
-  const dados = soWA ? todos.filter(c => c.whatsapp) : todos;
-  const mensagem = document.getElementById('msg-' + tipo)?.value?.trim();
-  if (!dados.length) { toast('⚠ Nenhum cliente na lista atual'); return; }
-  if (!mensagem) { toast('⚠ Escreva a mensagem antes de enviar'); return; }
-  const comWA = dados.filter(c => c.whatsapp);
-  if (!comWA.length) { toast('⚠ Nenhum cliente com WhatsApp na lista'); return; }
-  if (!confirm(`Enviar mensagem para ${comWA.length} cliente(s) com WhatsApp?`)) return;
-  toast(`📤 Enviando para ${comWA.length} clientes...`, 8000);
-  const r = await api('/api/disparar-lista', 'POST', {
-    clientes: comWA.map(c => ({ nome: c.cliente, whatsapp: c.whatsapp, media_recorrencia_dias: c.media_recorrencia_dias })),
-    mensagem,
+function selecionarTodos(tipo, checked) {
+  document.querySelectorAll('.chk-' + tipo + ':not(:disabled)').forEach(cb => cb.checked = checked);
+  atualizarContadorSel(tipo);
+}
+
+function atualizarContadorSel(tipo) {
+  const total = document.querySelectorAll('.chk-' + tipo + ':not(:disabled)').length;
+  const sel = document.querySelectorAll('.chk-' + tipo + ':checked').length;
+  const el = document.getElementById('seg-' + tipo + '-sel');
+  if (el) { el.textContent = `· ${sel} selecionados`; el.style.display = sel > 0 ? '' : 'none'; }
+}
+
+function getClientesSelecionados(tipo) {
+  const selecionados = [];
+  document.querySelectorAll('.chk-' + tipo + ':checked').forEach(cb => {
+    const tr = cb.closest('tr');
+    if (!tr) return;
+    const wa = tr.dataset.wa;
+    const nome = decodeURIComponent(tr.dataset.nome || '');
+    const per = tr.dataset.per || '';
+    if (wa) selecionados.push({ cliente: nome, whatsapp: wa, media_recorrencia_dias: per });
   });
-  if (r) toast(`✓ ${r.enviados} de ${r.total} mensagens enviadas`);
+  return selecionados;
+}
+
+async function agendarDisparo(tipo) {
+  const mensagem = document.getElementById('msg-' + tipo)?.value?.trim();
+  if (!mensagem) { toast('⚠ Escreva a mensagem antes de agendar'); return; }
+
+  let clientes = getClientesSelecionados(tipo);
+  if (!clientes.length) {
+    // Nenhum selecionado — usa todos com WhatsApp na lista atual
+    const todos = tipo === 'rec' ? dadosRec : tipo === 'per' ? dadosPer : dadosUni;
+    const soWA = document.getElementById(tipo === 'rec' ? 'seg-rec-soWA' : tipo === 'per' ? 'seg-per-soWA' : 'seg-uni-soWA')?.checked;
+    const lista = soWA ? todos.filter(c => c.whatsapp) : todos;
+    clientes = lista.filter(c => c.whatsapp).map(c => ({ cliente: c.cliente, whatsapp: c.whatsapp, media_recorrencia_dias: c.media_recorrencia_dias }));
+  }
+
+  if (!clientes.length) { toast('⚠ Nenhum cliente com WhatsApp disponível'); return; }
+  if (!confirm(`Agendar disparo para ${clientes.length} cliente(s)?\n\nOs disparos serão feitos automaticamente entre 8h e 18h, respeitando o limite diário configurado.`)) return;
+
+  toast('📅 Agendando disparos...');
+  const r = await api('/api/fila-disparos', 'POST', { clientes, mensagem, segmento: tipo });
+  if (r?.ok) {
+    toast(`✓ ${r.agendados} mensagem(ns) agendadas! Serão enviadas automaticamente.`);
+    selecionarTodos(tipo, false);
+    await loadFilaStatus();
+    document.getElementById('card-fila').style.display = '';
+  } else {
+    toast('⚠ Erro ao agendar: ' + (r?.erro || 'tente novamente'));
+  }
+}
+
+async function loadFilaStatus() {
+  const r = await api('/api/fila-disparos');
+  if (!r) return;
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const enviadosHoje = (r.enviados || []).filter(e => e.enviado_em && new Date(e.enviado_em) >= hoje).length;
+  document.getElementById('fila-pendentes').textContent = r.pendentes?.length ?? '—';
+  document.getElementById('fila-enviados').textContent = enviadosHoje;
+  document.getElementById('fila-erros').textContent = r.falhos?.length ?? '—';
+
+  const hist = document.getElementById('fila-historico');
+  if (r.pendentes?.length) {
+    hist.innerHTML = `<div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">Próximos na fila</div>`
+      + r.pendentes.slice(0, 10).map(p => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <span>${p.cliente_nome || p.whatsapp}</span><span class="badge ba">pendente</span>
+      </div>`).join('')
+      + (r.pendentes.length > 10 ? `<div style="font-size:11px;color:var(--text3);padding-top:8px">...e mais ${r.pendentes.length - 10} na fila</div>` : '');
+  } else {
+    hist.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0">Nenhum disparo pendente.</div>';
+  }
+
+  // Carrega limite salvo
+  const cfg = await api('/api/fila-disparos/config');
+  if (cfg?.limite_diario) document.getElementById('fila-limite').value = cfg.limite_diario;
+}
+
+async function cancelarFila() {
+  const pendentes = parseInt(document.getElementById('fila-pendentes').textContent) || 0;
+  if (!pendentes) { toast('Nenhum disparo pendente na fila'); return; }
+  if (!confirm(`Cancelar ${pendentes} disparo(s) pendentes?`)) return;
+  const r = await api('/api/fila-disparos/cancelar', 'POST');
+  if (r?.ok) { toast('✓ Fila cancelada'); loadFilaStatus(); }
+}
+
+async function salvarLimiteFila() {
+  const limite = parseInt(document.getElementById('fila-limite').value);
+  if (!limite || limite < 1) { toast('⚠ Limite inválido'); return; }
+  await api('/api/fila-disparos/config', 'POST', { limite_diario: limite });
+  toast(`✓ Limite diário atualizado: ${limite} mensagens/dia`);
 }
 
 // ── INIT ─────────────────────────────────────────────────────
