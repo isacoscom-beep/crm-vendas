@@ -1064,7 +1064,8 @@ app.post('/api/importar-clientes', async (req, res) => {
   let atualizados = 0, inseridos = 0, semMatch = 0;
 
   for (const c of clientes) {
-    const wa = c.whatsapp?.replace(/\D/g, '') || null;
+    let wa = c.whatsapp?.replace(/\D/g, '') || null;
+    if (wa && !wa.startsWith('55') && wa.length <= 11) wa = '55' + wa;
     const nomeNorm = normalizarNome(c.nome);
 
     // Tenta encontrar pelo nome (busca normalizada)
