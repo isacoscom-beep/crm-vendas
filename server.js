@@ -437,10 +437,14 @@ app.get('/api/analytics/unica-compra', async (req, res) => {
     const mapa = agruparPorCliente(pedidos);
     const agora = new Date();
 
-    const { data: clientes } = await supabase.from('clientes').select('nome, whatsapp, email');
-    const mapaWA = {}, mapaEmail = {};
+    const { data: clientes } = await supabase.from('clientes').select('nome, whatsapp, email, nome_comprador');
+    const mapaWA = {}, mapaEmail = {}, mapaComprador = {};
     for (const c of (clientes || [])) {
-      if (c.nome) { mapaWA[normalizarNome(c.nome)] = c.whatsapp; mapaEmail[normalizarNome(c.nome)] = c.email; }
+      if (c.nome) {
+        mapaWA[normalizarNome(c.nome)] = c.whatsapp;
+        mapaEmail[normalizarNome(c.nome)] = c.email;
+        mapaComprador[normalizarNome(c.nome)] = c.nome_comprador;
+      }
     }
 
     const resultado = [];
@@ -452,6 +456,7 @@ app.get('/api/analytics/unica-compra', async (req, res) => {
       const diasDesde = Math.floor((agora - dataCompra) / 86400000);
       resultado.push({
         cliente: nome,
+        nome_comprador: mapaComprador[normalizarNome(nome)] || null,
         whatsapp: wa,
         email: mapaEmail[normalizarNome(nome)] || null,
         data_compra: dados.compras[0].split('T')[0],
@@ -476,10 +481,14 @@ app.get('/api/analytics/recorrentes', async (req, res) => {
     const mapa = agruparPorCliente(pedidos);
     const agora = new Date();
 
-    const { data: clientes } = await supabase.from('clientes').select('nome, whatsapp, email');
-    const mapaWA = {}, mapaEmail = {};
+    const { data: clientes } = await supabase.from('clientes').select('nome, whatsapp, email, nome_comprador');
+    const mapaWA = {}, mapaEmail = {}, mapaComprador = {};
     for (const c of (clientes || [])) {
-      if (c.nome) { mapaWA[normalizarNome(c.nome)] = c.whatsapp; mapaEmail[normalizarNome(c.nome)] = c.email; }
+      if (c.nome) {
+        mapaWA[normalizarNome(c.nome)] = c.whatsapp;
+        mapaEmail[normalizarNome(c.nome)] = c.email;
+        mapaComprador[normalizarNome(c.nome)] = c.nome_comprador;
+      }
     }
 
     const resultado = [];
@@ -494,7 +503,7 @@ app.get('/api/analytics/recorrentes', async (req, res) => {
         totalDias += (datas[i] - datas[i - 1]) / 86400000;
       }
       const mediaRecorrenciaDias = Math.round(totalDias / (datas.length - 1));
-      if (mediaRecorrenciaDias < 1) continue; // pedidos no mesmo dia não contam como recorrência
+      if (mediaRecorrenciaDias < 1) continue;
       const ultimaCompra = datas[datas.length - 1];
       const diasSemComprar = Math.floor((agora - ultimaCompra) / 86400000);
       const proximaCompraEstimada = new Date(ultimaCompra.getTime() + mediaRecorrenciaDias * 86400000);
@@ -509,6 +518,7 @@ app.get('/api/analytics/recorrentes', async (req, res) => {
 
       resultado.push({
         cliente: nome,
+        nome_comprador: mapaComprador[normalizarNome(nome)] || null,
         whatsapp: wa,
         email: mapaEmail[normalizarNome(nome)] || null,
         total_compras: datas.length,
@@ -849,10 +859,13 @@ async function sincronizarBlingContatos() {
       const nomeNorm = normalizarNome(c.nome);
       const existente = (todosClientes || []).find(x => normalizarNome(x.nome) === nomeNorm);
 
+      const nomeComprador = c.pessoaContato?.trim() || null;
+
       if (existente) {
         const updates = {};
         if (!existente.whatsapp) updates.whatsapp = wa;
         if (c.email && !existente.email) updates.email = c.email;
+        if (nomeComprador && !existente.nome_comprador) updates.nome_comprador = nomeComprador;
         if (Object.keys(updates).length) {
           await supabase.from('clientes').update(updates).eq('id', existente.id);
           Object.assign(existente, updates);
@@ -863,6 +876,7 @@ async function sincronizarBlingContatos() {
           nome: c.nome.trim(),
           whatsapp: wa,
           email: c.email || null,
+          nome_comprador: nomeComprador,
           canal: 'WhatsApp',
           status: 'Ativo',
           tipo: 'Contato',
@@ -1062,6 +1076,7 @@ app.post('/api/importar-clientes', async (req, res) => {
       if (wa) updates.whatsapp = wa;
       if (c.email) updates.email = c.email;
       if (c.cidade || c.regiao) updates.cidade = c.cidade || c.regiao;
+      if (c.nome_comprador) updates.nome_comprador = c.nome_comprador;
       if (Object.keys(updates).length) {
         await supabase.from('clientes').update(updates).eq('id', existente.id);
         // Atualiza cache local para evitar conflito de WA duplicado
@@ -1074,6 +1089,7 @@ app.post('/api/importar-clientes', async (req, res) => {
         nome: c.nome,
         whatsapp: wa,
         email: c.email || null,
+        nome_comprador: c.nome_comprador || null,
         cidade: c.cidade || c.regiao || null,
         rota: c.rota || null,
         canal: c.canal || 'WhatsApp',
@@ -1295,13 +1311,18 @@ app.post('/api/disparar-lista', async (req, res) => {
 app.post('/api/fila-disparos', async (req, res) => {
   const { clientes, mensagem, segmento, limite_diario } = req.body;
   if (!clientes?.length || !mensagem) return res.status(400).json({ erro: 'Dados inválidos' });
-  const registros = clientes.map(c => ({
-    whatsapp: c.whatsapp,
-    cliente_nome: c.cliente || c.nome || '',
-    mensagem: mensagem.replace('{periodicidade}', c.media_recorrencia_dias || '?'),
-    segmento: segmento || 'manual',
-    status: 'pendente',
-  }));
+  const registros = clientes.map(c => {
+    const nomeExibir = c.nome_comprador || (c.cliente || c.nome || '').split(' ')[0] || '';
+    return {
+      whatsapp: c.whatsapp,
+      cliente_nome: c.cliente || c.nome || '',
+      mensagem: mensagem
+        .replace(/\{nome\}/g, nomeExibir)
+        .replace(/\{periodicidade\}/g, c.media_recorrencia_dias || '?'),
+      segmento: segmento || 'manual',
+      status: 'pendente',
+    };
+  });
   const { error } = await supabase.from('fila_disparos').insert(registros);
   if (error) return res.status(500).json({ erro: error.message });
   res.json({ ok: true, agendados: registros.length, limite_diario: limite_diario || 30 });

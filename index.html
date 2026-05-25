@@ -462,8 +462,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         </div>
       </div>
       <div class="fg" style="margin-bottom:12px">
-        <label style="font-size:10px;font-weight:600;color:var(--text3)">MENSAGEM — use {nome} e {periodicidade}</label>
-        <textarea id="msg-rec" style="width:100%;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2);padding:8px 11px;font-family:'DM Sans',sans-serif;resize:vertical;min-height:70px">Olá! 😊 Notamos que você costuma fazer pedidos a cada {periodicidade} dias. Está chegando a hora de reabastecer! Posso separar alguma coisa para você? 🌿</textarea>
+        <label style="font-size:10px;font-weight:600;color:var(--text3)">MENSAGEM — use {nome} (nome do comprador) e {periodicidade}</label>
+        <textarea id="msg-rec" style="width:100%;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2);padding:8px 11px;font-family:'DM Sans',sans-serif;resize:vertical;min-height:70px">Olá, {nome}! 😊 Notamos que você costuma fazer pedidos a cada {periodicidade} dias. Está chegando a hora de reabastecer! Posso separar alguma coisa para você? 🌿</textarea>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -493,8 +493,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         </div>
       </div>
       <div class="fg" style="margin-bottom:12px">
-        <label style="font-size:10px;font-weight:600;color:var(--text3)">MENSAGEM DE RESGATE — use {nome} e {periodicidade}</label>
-        <textarea id="msg-per" style="width:100%;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2);padding:8px 11px;font-family:'DM Sans',sans-serif;resize:vertical;min-height:70px">Olá! 😊 Sentimos sua falta! Faz um tempo que não recebemos seu pedido. Tem alguma novidade que posso te apresentar? 🌿</textarea>
+        <label style="font-size:10px;font-weight:600;color:var(--text3)">MENSAGEM DE RESGATE — use {nome} (nome do comprador) e {periodicidade}</label>
+        <textarea id="msg-per" style="width:100%;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2);padding:8px 11px;font-family:'DM Sans',sans-serif;resize:vertical;min-height:70px">Olá, {nome}! 😊 Sentimos sua falta! Faz um tempo que não recebemos seu pedido. Tem alguma novidade que posso te apresentar? 🌿</textarea>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -524,8 +524,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
         </div>
       </div>
       <div class="fg" style="margin-bottom:12px">
-        <label style="font-size:10px;font-weight:600;color:var(--text3)">MENSAGEM DE RESGATE — use {nome}</label>
-        <textarea id="msg-uni" style="width:100%;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2);padding:8px 11px;font-family:'DM Sans',sans-serif;resize:vertical;min-height:70px">Olá! 😊 Faz um tempo desde sua última compra conosco. Temos produtos fresquinhos e novidades esperando por você! Que tal fazer um novo pedido? 🌿</textarea>
+        <label style="font-size:10px;font-weight:600;color:var(--text3)">MENSAGEM DE RESGATE — use {nome} (nome do comprador)</label>
+        <textarea id="msg-uni" style="width:100%;font-size:12px;border-radius:var(--radius);border:1px solid var(--border2);padding:8px 11px;font-family:'DM Sans',sans-serif;resize:vertical;min-height:70px">Olá, {nome}! 😊 Faz um tempo desde sua última compra conosco. Temos produtos fresquinhos e novidades esperando por você! Que tal fazer um novo pedido? 🌿</textarea>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -713,7 +713,7 @@ function renderClientes() {
   if (!filtered.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
   empty.style.display = 'none';
   tbody.innerHTML = filtered.map(c => `<tr>
-    <td><strong>${c.nome}</strong><br>${badgeTipo(c.tipo || 'Contato')}</td>
+    <td><strong>${c.nome}</strong>${c.nome_comprador ? `<br><span style="font-size:11px;color:var(--text2)">👤 ${c.nome_comprador}</span>` : ''}<br>${badgeTipo(c.tipo || 'Contato')}</td>
     <td>${c.cidade || '—'}</td>
     <td>${c.whatsapp ? `<span class="badge bg">WA</span> <span style="font-size:10px;color:var(--text3)">${formatWA(c.whatsapp)}</span>` : '<span class="badge bgr">—</span>'}</td>
     <td>${c.email ? `<span class="badge bb">Email</span> <span style="font-size:10px;color:var(--text3)">${c.email}</span>` : '<span class="badge bgr">—</span>'}</td>
@@ -984,7 +984,10 @@ function buildModal(tipo, data = {}) {
         <option${data.status==='Inativo'?' selected':''}>Inativo</option>
       </select></div>
     </div>
-    <div class="fg"><label>Observações</label><input id="m-obs" value="${data.obs||''}" placeholder="Informações extras"></div>
+    <div class="fg2">
+      <div class="fg"><label>Nome do Comprador</label><input id="m-comprador" value="${data.nome_comprador||''}" placeholder="Quem realiza as compras na empresa"></div>
+      <div class="fg"><label>Observações</label><input id="m-obs" value="${data.obs||''}" placeholder="Informações extras"></div>
+    </div>
     <div class="form-actions">
       <button class="btn" onclick="closeModal()">Cancelar</button>
       <button class="btn primary" onclick="salvarCliente('${data.id||''}')">💾 Salvar</button>
@@ -1059,6 +1062,7 @@ async function salvarCliente(id) {
     cidade: document.getElementById('m-cidade').value.trim(),
     canal: document.getElementById('m-canal').value,
     status: document.getElementById('m-status').value,
+    nome_comprador: document.getElementById('m-comprador').value.trim() || null,
     obs: document.getElementById('m-obs').value.trim(),
   };
   const r = id ? await api('/api/clientes/' + id, 'PUT', body) : await api('/api/clientes', 'POST', body);
@@ -1104,7 +1108,8 @@ function processCSV(input) {
       if (!cols[0]) continue;
       const obj = {};
       headers.forEach((h, j) => {
-        if (h.includes('nome')) obj.nome = cols[j];
+        if (h.includes('comprador') || h.includes('contato') || h === 'nome_comprador') obj.nome_comprador = cols[j];
+        else if (h === 'nome' || (h.includes('nome') && !h.includes('comprador'))) obj.nome = cols[j];
         else if (h.includes('whatsapp') || h.includes('celular') || h.includes('telefone')) obj.whatsapp = cols[j]?.replace(/\D/g,'');
         else if (h.includes('email')) obj.email = cols[j];
         else if (h.includes('cidade') || h.includes('regiao') || h.includes('região')) obj.cidade = cols[j];
@@ -1339,9 +1344,9 @@ async function loadRecorrentes() {
   tbody.innerHTML = listaRec.map(c => {
     const sb = c.status_recorrencia === 'atrasado' ? 'br' : c.status_recorrencia === 'proximo' ? 'ba' : 'bg';
     const sl = c.status_recorrencia === 'atrasado' ? 'Atrasado' : c.status_recorrencia === 'proximo' ? 'Próximo' : 'Em dia';
-    return `<tr data-nome="${encodeURIComponent(c.cliente)}" data-wa="${c.whatsapp||''}" data-per="${c.media_recorrencia_dias||''}" style="${!c.whatsapp ? 'opacity:.5' : ''}">
+    return `<tr data-nome="${encodeURIComponent(c.cliente)}" data-wa="${c.whatsapp||''}" data-per="${c.media_recorrencia_dias||''}" data-comprador="${encodeURIComponent(c.nome_comprador||'')}" style="${!c.whatsapp ? 'opacity:.5' : ''}">
       <td style="text-align:center"><input type="checkbox" class="chk-rec" ${!c.whatsapp ? 'disabled' : ''} onchange="atualizarContadorSel('rec')"></td>
-      <td><strong>${c.cliente}</strong></td>
+      <td><strong>${c.cliente}</strong>${c.nome_comprador ? `<br><span style="font-size:11px;color:var(--text2)">👤 ${c.nome_comprador}</span>` : ''}</td>
       <td>${c.whatsapp ? `<span class="badge bg">WA</span> <span style="font-size:10px;color:var(--text3)">${formatWA(c.whatsapp)}</span>` : '<span class="badge bgr">—</span>'}</td>
       <td>${c.email ? `<span class="badge bb">Email</span> <span style="font-size:10px;color:var(--text3)">${c.email}</span>` : '<span class="badge bgr">—</span>'}</td>
       <td>${(c.canais||[]).map(ch => badgeCanal(ch)).join(' ')}</td>
@@ -1368,9 +1373,9 @@ async function loadPerdidos() {
   document.getElementById('seg-per-count').textContent = `${lista.length} cliente(s) — ${comWA} com WhatsApp`;
   if (!lista.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
   empty.style.display = 'none';
-  tbody.innerHTML = lista.map(c => `<tr data-nome="${encodeURIComponent(c.cliente)}" data-wa="${c.whatsapp||''}" data-per="${c.media_recorrencia_dias||''}" style="${!c.whatsapp ? 'opacity:.5' : ''}">
+  tbody.innerHTML = lista.map(c => `<tr data-nome="${encodeURIComponent(c.cliente)}" data-wa="${c.whatsapp||''}" data-per="${c.media_recorrencia_dias||''}" data-comprador="${encodeURIComponent(c.nome_comprador||'')}" style="${!c.whatsapp ? 'opacity:.5' : ''}">
     <td style="text-align:center"><input type="checkbox" class="chk-per" ${!c.whatsapp ? 'disabled' : ''} onchange="atualizarContadorSel('per')"></td>
-    <td><strong>${c.cliente}</strong></td>
+    <td><strong>${c.cliente}</strong>${c.nome_comprador ? `<br><span style="font-size:11px;color:var(--text2)">👤 ${c.nome_comprador}</span>` : ''}</td>
     <td>${c.whatsapp ? `<span class="badge bg">WA</span> <span style="font-size:10px;color:var(--text3)">${formatWA(c.whatsapp)}</span>` : '<span class="badge bgr">—</span>'}</td>
     <td>${(c.canais||[]).map(ch => badgeCanal(ch)).join(' ')}</td>
     <td>${c.total_compras}</td>
@@ -1393,9 +1398,9 @@ async function loadUnicaCompra() {
   document.getElementById('seg-uni-count').textContent = `${listaUni.length} cliente(s) — ${comWAUni} com WhatsApp`;
   if (!listaUni.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
   empty.style.display = 'none';
-  tbody.innerHTML = listaUni.map(c => `<tr data-nome="${encodeURIComponent(c.cliente)}" data-wa="${c.whatsapp||''}" style="${!c.whatsapp ? 'opacity:.5' : ''}">
+  tbody.innerHTML = listaUni.map(c => `<tr data-nome="${encodeURIComponent(c.cliente)}" data-wa="${c.whatsapp||''}" data-comprador="${encodeURIComponent(c.nome_comprador||'')}" style="${!c.whatsapp ? 'opacity:.5' : ''}">
     <td style="text-align:center"><input type="checkbox" class="chk-uni" ${!c.whatsapp ? 'disabled' : ''} onchange="atualizarContadorSel('uni')"></td>
-    <td><strong>${c.cliente}</strong></td>
+    <td><strong>${c.cliente}</strong>${c.nome_comprador ? `<br><span style="font-size:11px;color:var(--text2)">👤 ${c.nome_comprador}</span>` : ''}</td>
     <td>${c.whatsapp ? `<span class="badge bg">WA</span> <span style="font-size:10px;color:var(--text3)">${formatWA(c.whatsapp)}</span>` : '<span class="badge bgr">—</span>'}</td>
     <td>${c.email ? `<span class="badge bb">Email</span> <span style="font-size:10px;color:var(--text3)">${c.email}</span>` : '<span class="badge bgr">—</span>'}</td>
     <td>${(c.canais||[]).map(ch => badgeCanal(ch)).join(' ')}</td>
@@ -1425,7 +1430,8 @@ function getClientesSelecionados(tipo) {
     const wa = tr.dataset.wa;
     const nome = decodeURIComponent(tr.dataset.nome || '');
     const per = tr.dataset.per || '';
-    if (wa) selecionados.push({ cliente: nome, whatsapp: wa, media_recorrencia_dias: per });
+    const comprador = decodeURIComponent(tr.dataset.comprador || '') || null;
+    if (wa) selecionados.push({ cliente: nome, whatsapp: wa, media_recorrencia_dias: per, nome_comprador: comprador });
   });
   return selecionados;
 }
@@ -1440,7 +1446,7 @@ async function agendarDisparo(tipo) {
     const todos = tipo === 'rec' ? dadosRec : tipo === 'per' ? dadosPer : dadosUni;
     const soWA = document.getElementById(tipo === 'rec' ? 'seg-rec-soWA' : tipo === 'per' ? 'seg-per-soWA' : 'seg-uni-soWA')?.checked;
     const lista = soWA ? todos.filter(c => c.whatsapp) : todos;
-    clientes = lista.filter(c => c.whatsapp).map(c => ({ cliente: c.cliente, whatsapp: c.whatsapp, media_recorrencia_dias: c.media_recorrencia_dias }));
+    clientes = lista.filter(c => c.whatsapp).map(c => ({ cliente: c.cliente, whatsapp: c.whatsapp, media_recorrencia_dias: c.media_recorrencia_dias, nome_comprador: c.nome_comprador || null }));
   }
 
   if (!clientes.length) { toast('⚠ Nenhum cliente com WhatsApp disponível'); return; }
