@@ -182,6 +182,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="sb-sec">Config</div>
   <div class="sb-item" onclick="importarCSV()"><span class="ico">📥</span>Importar Planilha</div>
   <div class="sb-item" onclick="exportarClientes()"><span class="ico">📤</span>Exportar Dados</div>
+  <div class="sb-item" onclick="exportarPlanilhaCompradores()"><span class="ico">👤</span>Planilha Compradores</div>
   <div class="sb-footer">
     <div class="sb-sync" id="sb-sync">⏳ Conectando...</div>
   </div>
@@ -1140,6 +1141,25 @@ async function exportarClientes() {
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'clientes.csv'; a.click();
   toast('✓ Exportado!');
+}
+
+async function exportarPlanilhaCompradores() {
+  toast('📥 Gerando planilha...');
+  const clientes = await api('/api/clientes') || [];
+  if (!clientes.length) { toast('Nenhum cliente para exportar'); return; }
+  const linhas = [['nome', 'whatsapp', 'comprador'].join(',')];
+  clientes
+    .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'))
+    .forEach(c => {
+      const esc = v => '"' + (v || '').replace(/"/g, '""') + '"';
+      linhas.push([esc(c.nome), esc(c.whatsapp || ''), esc(c.nome_comprador || '')].join(','));
+    });
+  const blob = new Blob(['﻿' + linhas.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'compradores_para_preencher.csv';
+  a.click();
+  toast(`✓ Planilha com ${clientes.length} clientes gerada!`);
 }
 
 async function sincContatosBling() {
