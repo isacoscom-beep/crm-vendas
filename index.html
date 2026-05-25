@@ -1136,8 +1136,8 @@ async function exportarClientes() {
   const clientes = await api('/api/clientes') || [];
   if (!clientes.length) { toast('Nenhum cliente para exportar'); return; }
   const headers = ['Nome','WhatsApp','Email','Cidade','Canal','Status'];
-  const rows = clientes.map(c => [c.nome, c.whatsapp, c.email, c.cidade, c.canal, c.status].map(v => `"${v||''}"`).join(','));
-  const csv = [headers.join(','), ...rows].join('\n');
+  const rows = clientes.map(c => [c.nome, c.whatsapp, c.email, c.cidade, c.canal, c.status].map(v => `"${v||''}"`).join(';'));
+  const csv = ['sep=;', headers.join(';'), ...rows].join('\n');
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'clientes.csv'; a.click();
   toast('✓ Exportado!');
@@ -1147,13 +1147,12 @@ async function exportarPlanilhaCompradores() {
   toast('📥 Gerando planilha...');
   const clientes = await api('/api/clientes') || [];
   if (!clientes.length) { toast('Nenhum cliente para exportar'); return; }
-  const linhas = [['nome', 'whatsapp', 'comprador'].join(',')];
+  const esc = v => '"' + (v || '').replace(/"/g, '""') + '"';
+  const sep = ';';
+  const linhas = ['sep=;', ['nome', 'whatsapp', 'comprador'].join(sep)];
   clientes
     .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'))
-    .forEach(c => {
-      const esc = v => '"' + (v || '').replace(/"/g, '""') + '"';
-      linhas.push([esc(c.nome), esc(c.whatsapp || ''), esc(c.nome_comprador || '')].join(','));
-    });
+    .forEach(c => linhas.push([esc(c.nome), esc(c.whatsapp || ''), esc(c.nome_comprador || '')].join(sep)));
   const blob = new Blob(['﻿' + linhas.join('\n')], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
