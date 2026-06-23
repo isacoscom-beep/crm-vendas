@@ -1188,8 +1188,11 @@ async function exportarClientes() {
 }
 async function exportarPlanilhaCompradores() {
   toast('📥 Gerando planilha...');
-  const clientes = await api('/api/clientes') || [];
-  if (!clientes.length) { toast('Nenhum cliente para exportar'); return; }
+  const todos = await api('/api/clientes') || [];
+  if (!todos.length) { toast('Nenhum cliente para exportar'); return; }
+  // Exporta apenas os que ainda não têm nome_comprador
+  const clientes = todos.filter(c => !c.nome_comprador || !c.nome_comprador.trim());
+  if (!clientes.length) { toast('✓ Todos os clientes já têm nome do comprador!'); return; }
   const esc = v => '"' + (v || '').replace(/"/g, '""') + '"';
   const formatarWA = wa => {
     if (!wa) return '';
@@ -1203,13 +1206,13 @@ async function exportarPlanilhaCompradores() {
   const linhas = ['sep=;', ['nome', 'whatsapp', 'comprador'].join(sep)];
   clientes
     .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'))
-    .forEach(c => linhas.push([esc(c.nome), esc(formatarWA(c.whatsapp)), esc(c.nome_comprador || '')].join(sep)));
+    .forEach(c => linhas.push([esc(c.nome), esc(formatarWA(c.whatsapp)), esc('')].join(sep)));
   const blob = new Blob(['﻿' + linhas.join('\n')], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'compradores_para_preencher.csv';
+  a.download = 'compradores_sem_preencher.csv';
   a.click();
-  toast(`✓ Planilha com ${clientes.length} clientes gerada!`);
+  toast(`✓ Planilha com ${clientes.length} clientes sem comprador gerada!`);
 }
 
 async function sincContatosBling() {

@@ -797,6 +797,8 @@ async function sincronizarBlingPedidos() {
 
   let pagina = 1, totalSincronizados = 0, continuar = true;
   const nomesSincronizados = new Set();
+  const compradorMap = {}; // normNome → pessoaContato capturado nos pedidos
+
   while (continuar) {
     const response = await axios.get('https://api.bling.com.br/Api/v3/pedidos/vendas', {
       headers: { Authorization: `Bearer ${token}` },
@@ -806,7 +808,6 @@ async function sincronizarBlingPedidos() {
     if (!pedidosBling.length) { continuar = false; break; }
 
     for (const p of pedidosBling) {
-      // Ignora pedidos não concluídos (Em Aberto, Cancelado, etc.)
       const situacaoId = Number(p.situacao?.id);
       const situacaoValor = Number(p.situacao?.valor);
       if (situacaoValor !== 1 && !SITUACOES_CONCLUIDAS.has(situacaoId)) continue;
@@ -814,10 +815,14 @@ async function sincronizarBlingPedidos() {
       const canal = resolverCanal(p);
       const status = resolverStatus(p.situacao);
       const clienteNome = p.contato?.nome || '';
+      const pessoaContato = p.contato?.pessoaContato?.trim() || null;
       const criado_em = p.data || new Date().toISOString();
       const valor = parseFloat(p.total || p.totalVenda || 0);
 
-      if (clienteNome) nomesSincronizados.add(clienteNome);
+      if (clienteNome) {
+        nomesSincronizados.add(clienteNome);
+        if (pessoaContato) compradorMap[normalizarNome(clienteNome)] = pessoaContato;
+      }
 
       await supabase.from('pedidos').upsert({
         id_externo: `bling_${p.id}`,
@@ -834,6 +839,17 @@ async function sincronizarBlingPedidos() {
     pagina++;
     await new Promise(r => setTimeout(r, 500));
     if (pedidosBling.length < 100) continuar = false;
+  }
+
+  // Atualiza nome_comprador nos clientes que ainda não têm, usando pessoaContato do Bling
+  if (Object.keys(compradorMap).length > 0) {
+    const { data: clientesDB } = await supabase.from('clientes').select('id, nome, nome_comprador');
+    for (const cl of clientesDB || []) {
+      if (!cl.nome_comprador) {
+        const comprador = compradorMap[normalizarNome(cl.nome)];
+        if (comprador) await supabase.from('clientes').update({ nome_comprador: comprador }).eq('id', cl.id);
+      }
+    }
   }
 
   return { sincronizados: totalSincronizados, paginas: pagina - 1 };
