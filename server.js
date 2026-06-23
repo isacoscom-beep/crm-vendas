@@ -213,12 +213,13 @@ async function processarMensagemCliente(numero, mensagem) {
 // API — CLIENTES
 // ============================================================
 app.get('/api/clientes', async (req, res) => {
-  const { rota, status, busca, tipo } = req.query;
+  const { rota, status, busca, tipo, sem_comprador } = req.query;
   let query = supabase.from('clientes').select('*').order('nome').limit(2000);
   if (rota) query = query.eq('rota', rota);
   if (status) query = query.eq('status', status);
   if (busca) query = query.ilike('nome', `%${busca}%`);
   if (tipo) query = query.eq('tipo', tipo);
+  if (sem_comprador) query = query.or('nome_comprador.is.null,nome_comprador.eq.');
   const { data, error } = await query;
   if (error) return res.status(500).json({ erro: error.message });
   res.json(data);

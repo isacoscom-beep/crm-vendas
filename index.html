@@ -1188,10 +1188,8 @@ async function exportarClientes() {
 }
 async function exportarPlanilhaCompradores() {
   toast('📥 Gerando planilha...');
-  const todos = await api('/api/clientes') || [];
-  if (!todos.length) { toast('Nenhum cliente para exportar'); return; }
-  // Exporta apenas os que ainda não têm nome_comprador
-  const clientes = todos.filter(c => !c.nome_comprador || !c.nome_comprador.trim());
+  // Filtro server-side: só retorna quem não tem nome_comprador
+  const clientes = await api('/api/clientes?sem_comprador=1') || [];
   if (!clientes.length) { toast('✓ Todos os clientes já têm nome do comprador!'); return; }
   const esc = v => '"' + (v || '').replace(/"/g, '""') + '"';
   const formatarWA = wa => {
