@@ -878,8 +878,8 @@ async function loadPedidos() {
   const pedidos = await api(path) || [];
   const total = pedidos.reduce((s, p) => s + parseFloat(p.valor || 0), 0);
   const hoje = new Date();
-  const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString();
-  const mes = pedidos.filter(p => p.criado_em >= inicioMes).length;
+  const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0, 10);
+  const mes = pedidos.filter(p => (p.criado_em || '').slice(0, 10) >= inicioMes).length;
   const ticket = pedidos.length ? total / pedidos.length : 0;
 
   document.getElementById('ped-total').textContent = pedidos.length;

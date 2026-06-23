@@ -344,14 +344,14 @@ app.get('/api/atividades', async (req, res) => {
 app.get('/api/dashboard', async (req, res) => {
   const [clientes, pedidos, oportunidades, rotas] = await Promise.all([
     supabase.from('clientes').select('id, status, cidade, canal, criado_em'),
-    supabase.from('pedidos').select('id, valor, canal, status, criado_em'),
+    supabase.from('pedidos').select('id, valor, canal, status, criado_em').limit(2000),
     supabase.from('oportunidades').select('id, valor, etapa'),
     supabase.from('rotas_diarias').select('id, cidades, data_entrega').order('data_entrega', { ascending: false }).limit(5),
   ]);
 
   const hoje = new Date();
-  const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString();
-  const pedidosMes = (pedidos.data || []).filter(p => p.criado_em >= inicioMes);
+  const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0, 10);
+  const pedidosMes = (pedidos.data || []).filter(p => (p.criado_em || '').slice(0, 10) >= inicioMes);
   const receitaMes = pedidosMes.reduce((s, p) => s + parseFloat(p.valor || 0), 0);
 
   res.json({
