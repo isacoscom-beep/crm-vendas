@@ -214,12 +214,22 @@ async function processarMensagemCliente(numero, mensagem) {
 // ============================================================
 app.get('/api/clientes', async (req, res) => {
   const { rota, status, busca, tipo, sem_comprador } = req.query;
+
+  // Modo especial: retorna apenas clientes sem nome_comprador (null OU string vazia)
+  if (sem_comprador) {
+    const [r1, r2] = await Promise.all([
+      supabase.from('clientes').select('id, nome, whatsapp, nome_comprador').is('nome_comprador', null).order('nome').limit(2000),
+      supabase.from('clientes').select('id, nome, whatsapp, nome_comprador').eq('nome_comprador', '').order('nome').limit(2000),
+    ]);
+    const combinados = [...(r1.data || []), ...(r2.data || [])].sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
+    return res.json(combinados);
+  }
+
   let query = supabase.from('clientes').select('*').order('nome').limit(2000);
   if (rota) query = query.eq('rota', rota);
   if (status) query = query.eq('status', status);
   if (busca) query = query.ilike('nome', `%${busca}%`);
   if (tipo) query = query.eq('tipo', tipo);
-  if (sem_comprador) query = query.or('nome_comprador.is.null,nome_comprador.eq.');
   const { data, error } = await query;
   if (error) return res.status(500).json({ erro: error.message });
   res.json(data);
