@@ -911,8 +911,18 @@ async function delPedido(id) {
 
 async function sincWoo() { toast('🔄 Sincronizando WooCommerce...'); const r = await api('/api/woo/pedidos'); if (r) { toast(`✓ ${r.sincronizados} pedidos sincronizados`); loadPedidos(); } }
 async function sincML() { toast('🔄 Sincronizando Mercado Livre...'); const r = await api('/api/ml/pedidos'); if (r) { toast(`✓ ${r.sincronizados} pedidos sincronizados`); loadPedidos(); } }
-async function sincBling() { toast('🔄 Sincronizando Bling...'); const r = await api('/api/bling/pedidos'); if (r) { toast(`✓ ${r.sincronizados} pedidos do Bling`); } }
-async function sincBlingPedidos() { toast('🔄 Sincronizando Bling...'); const r = await api('/api/bling/pedidos'); if (r) { toast(`✓ ${r.sincronizados} pedidos sincronizados`); loadPedidos(); } }
+async function sincBling() {
+  toast('🔄 Sincronizando Bling...');
+  const r = await api('/api/bling/pedidos');
+  const c = await api('/api/bling/contatos');
+  if (r) { toast(`✓ ${r.sincronizados} pedidos · ${(c?.criados||0)} clientes novos`); }
+}
+async function sincBlingPedidos() {
+  toast('🔄 Sincronizando Bling...');
+  const r = await api('/api/bling/pedidos');
+  const c = await api('/api/bling/contatos');
+  if (r) { toast(`✓ ${r.sincronizados} pedidos · ${(c?.criados||0)} clientes novos`); loadPedidos(); }
+}
 
 // ── RELATÓRIOS ───────────────────────────────────────────────
 async function loadRelatorios() {
