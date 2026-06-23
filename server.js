@@ -976,16 +976,18 @@ app.get('/api/bling/debug', async (req, res) => {
     const pedidos = response.data?.data || [];
     res.json(pedidos.map(p => ({
       id: p.id,
+      data: p.data,
       loja_nome: p.loja?.nome,
       loja_id: p.loja?.id,
       numeroPedidoLoja: p.numeroPedidoLoja,
       situacao_id: p.situacao?.id,
       situacao_valor: p.situacao?.valor,
+      situacao_nome: p.situacao?.nome,
       total: p.total,
-      totalVenda: p.totalVenda,
       contato: p.contato?.nome,
       canal_detectado: resolverCanal(p),
       status_detectado: resolverStatus(p.situacao),
+      seria_importado: (Number(p.situacao?.valor) === 1 || SITUACOES_CONCLUIDAS.has(Number(p.situacao?.id))),
     })));
   } catch (err) {
     res.status(500).json({ erro: err.message });
