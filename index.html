@@ -646,7 +646,7 @@ async function loadDashboard() {
 
   document.getElementById('dash-metrics').innerHTML = `
     <div class="metric"><div class="lbl">Total Clientes</div><div class="val">${data.clientes.total}</div><div class="sub"><span class="up">${data.clientes.ativos} ativos</span></div></div>
-    <div class="metric"><div class="lbl">Receita do Mês</div><div class="val">R$${Math.round(data.pedidos.receita_mes/1000)||0}k</div><div class="sub">${data.pedidos.mes} pedidos</div></div>
+    <div class="metric"><div class="lbl">Receita do Mês</div><div class="val">R$${(data.pedidos.receita_mes||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div><div class="sub">${data.pedidos.mes} pedidos</div></div>
     <div class="metric"><div class="lbl">Oportunidades</div><div class="val">${data.oportunidades.abertas}</div><div class="sub">em aberto</div></div>
     <div class="metric"><div class="lbl">Pedidos Total</div><div class="val">${data.pedidos.total}</div></div>`;
 
@@ -885,7 +885,7 @@ async function loadPedidos() {
   document.getElementById('ped-total').textContent = pedidos.length;
   document.getElementById('ped-receita').textContent = 'R$' + total.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
   document.getElementById('ped-mes').textContent = mes;
-  document.getElementById('ped-ticket').textContent = 'R$' + Math.round(ticket);
+  document.getElementById('ped-ticket').textContent = 'R$' + ticket.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 
   const tbody = document.getElementById('tbl-pedidos');
   const empty = document.getElementById('ped-empty');
@@ -923,9 +923,9 @@ async function loadRelatorios() {
   const ativos = c.filter(x => x.status === 'Ativo').length;
 
   document.getElementById('rel-metrics').innerHTML = `
-    <div class="metric"><div class="lbl">Receita Total</div><div class="val">R$${Math.round(total/1000)||0}k</div></div>
+    <div class="metric"><div class="lbl">Receita Total</div><div class="val">R$${total.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div></div>
     <div class="metric"><div class="lbl">Pedidos</div><div class="val">${p.length}</div></div>
-    <div class="metric"><div class="lbl">Ticket Médio</div><div class="val">R$${Math.round(ticket)}</div></div>
+    <div class="metric"><div class="lbl">Ticket Médio</div><div class="val">R$${ticket.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div></div>
     <div class="metric"><div class="lbl">Clientes Ativos</div><div class="val">${ativos}</div></div>`;
 
   const canais = {};
