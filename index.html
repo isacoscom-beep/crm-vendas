@@ -883,7 +883,7 @@ async function loadPedidos() {
   const ticket = pedidos.length ? total / pedidos.length : 0;
 
   document.getElementById('ped-total').textContent = pedidos.length;
-  document.getElementById('ped-receita').textContent = 'R$' + Math.round(total / 1000) + 'k';
+  document.getElementById('ped-receita').textContent = 'R$' + total.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
   document.getElementById('ped-mes').textContent = mes;
   document.getElementById('ped-ticket').textContent = 'R$' + Math.round(ticket);
 
