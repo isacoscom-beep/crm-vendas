@@ -354,18 +354,20 @@ app.get('/api/dashboard', async (req, res) => {
   const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0, 10);
   const pedidosMes = (pedidos.data || []).filter(p => (p.criado_em || '').slice(0, 10) >= inicioMes);
   const receitaMes = pedidosMes.reduce((s, p) => s + parseFloat(p.valor || 0), 0);
-  const clientesNovosMes = (clientes.data || []).filter(c => (c.criado_em || '').slice(0, 10) >= inicioMes).length;
+  const compradoresMes = new Set(
+    pedidosMes.filter(p => p.cliente_nome).map(p => p.cliente_nome.trim().toLowerCase())
+  ).size;
 
   res.json({
     clientes: {
       total: clientes.data?.length || 0,
       ativos: clientes.data?.filter(c => c.status === 'Ativo').length || 0,
-      novos_mes: clientesNovosMes,
     },
     pedidos: {
       total: pedidos.data?.length || 0,
       mes: pedidosMes.length,
       receita_mes: receitaMes,
+      compradores_mes: compradoresMes,
     },
     oportunidades: {
       abertas: oportunidades.data?.filter(o => o.etapa !== 'Fechado').length || 0,

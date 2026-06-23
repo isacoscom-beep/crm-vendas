@@ -648,7 +648,7 @@ async function loadDashboard() {
   document.getElementById('dash-metrics').innerHTML = `
     <div class="metric"><div class="lbl">Pedidos do Mês</div><div class="val">${data.pedidos.mes}</div><div class="sub">${mesNome}</div></div>
     <div class="metric"><div class="lbl">Receita do Mês</div><div class="val">R$${(data.pedidos.receita_mes||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div><div class="sub">${mesNome}</div></div>
-    <div class="metric"><div class="lbl">Clientes Novos</div><div class="val">${data.clientes.novos_mes}</div><div class="sub">${data.clientes.ativos} ativos · ${mesNome}</div></div>
+    <div class="metric"><div class="lbl">Compradores do Mês</div><div class="val">${data.pedidos.compradores_mes}</div><div class="sub">${data.clientes.ativos} clientes ativos · ${mesNome}</div></div>
     <div class="metric"><div class="lbl">Oportunidades</div><div class="val">${data.oportunidades.abertas}</div><div class="sub">em aberto</div></div>`;
 
   document.getElementById('sb-sub').textContent = `${data.clientes.total} clientes`;
