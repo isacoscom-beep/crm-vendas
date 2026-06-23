@@ -251,7 +251,8 @@ app.get('/api/pedidos', async (req, res) => {
   const { canal, dataInicial, dataFinal } = req.query;
   let query = supabase.from('pedidos').select('*, clientes(nome)')
     .ilike('status', 'Atendido%')
-    .order('criado_em', { ascending: false });
+    .order('criado_em', { ascending: false })
+    .limit(2000);
   if (canal) query = query.eq('canal', canal);
   if (dataInicial) query = query.gte('criado_em', dataInicial);
   if (dataFinal) query = query.lte('criado_em', dataFinal + 'T23:59:59');
@@ -699,6 +700,7 @@ const STATUS_BLING = {
 
 // Cache de situações carregado do Bling: { id → nome }
 let cacheSituacoes = {
+  9: 'Atendido',
   451604: 'Atendido Sankhya',
   468898: 'Atendido Bling Isacos',
 };
