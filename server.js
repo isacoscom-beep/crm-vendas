@@ -990,7 +990,11 @@ app.get('/api/bling/debug', async (req, res) => {
       seria_importado: (Number(p.situacao?.valor) === 1 || SITUACOES_CONCLUIDAS.has(Number(p.situacao?.id))),
     })));
   } catch (err) {
-    res.status(500).json({ erro: err.message });
+    res.status(500).json({
+      erro: err.message,
+      status_bling: err.response?.status,
+      detalhe_bling: err.response?.data,
+    });
   }
 });
 
