@@ -708,7 +708,7 @@ const SITUACOES_CONCLUIDAS = new Set([9, 451604, 468898]);
 
 async function carregarSituacoesBling(token) {
   try {
-    const r = await axios.get('https://www.bling.com.br/Api/v3/situacoes/modulos/3', {
+    const r = await axios.get('https://api.bling.com.br/Api/v3/situacoes/modulos/3', {
       headers: { Authorization: `Bearer ${token}` },
     });
     const sits = r.data?.data || [];
@@ -760,7 +760,7 @@ async function getBlingToken() {
     const { data: cfg } = await supabase.from('configuracoes').select('valor').eq('chave', 'bling_refresh_token').single();
     if (cfg?.valor) {
       const credentials = Buffer.from(`${process.env.BLING_CLIENT_ID}:${process.env.BLING_CLIENT_SECRET}`).toString('base64');
-      const response = await axios.post('https://www.bling.com.br/Api/v3/oauth/token',
+      const response = await axios.post('https://api.bling.com.br/Api/v3/oauth/token',
         `grant_type=refresh_token&refresh_token=${cfg.valor}`,
         { headers: { Authorization: `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
       );
@@ -790,7 +790,7 @@ async function sincronizarBlingPedidos() {
   let pagina = 1, totalSincronizados = 0, continuar = true;
   const nomesSincronizados = new Set();
   while (continuar) {
-    const response = await axios.get('https://www.bling.com.br/Api/v3/pedidos/vendas', {
+    const response = await axios.get('https://api.bling.com.br/Api/v3/pedidos/vendas', {
       headers: { Authorization: `Bearer ${token}` },
       params: { pagina, limite: 100, dataInicial: '01/01/2020' },
     });
@@ -841,7 +841,7 @@ async function sincronizarBlingContatos() {
   const { data: todosClientes } = await supabase.from('clientes').select('id, nome, whatsapp, email');
 
   while (continuar) {
-    const response = await axios.get('https://www.bling.com.br/Api/v3/contatos', {
+    const response = await axios.get('https://api.bling.com.br/Api/v3/contatos', {
       headers: { Authorization: `Bearer ${token}` },
       params: { pagina, limite: 100, situacao: 1 },
     });
@@ -925,7 +925,7 @@ app.get('/api/bling/lojas', async (req, res) => {
     if (!token) return res.status(500).json({ erro: 'Bling não autenticado' });
 
     // Busca os IDs únicos de loja nos pedidos
-    const response = await axios.get('https://www.bling.com.br/Api/v3/pedidos/vendas', {
+    const response = await axios.get('https://api.bling.com.br/Api/v3/pedidos/vendas', {
       headers: { Authorization: `Bearer ${token}` },
       params: { pagina: 1, limite: 100 }
     });
@@ -936,7 +936,7 @@ app.get('/api/bling/lojas', async (req, res) => {
     const lojas = [];
     for (const id of idsUnicos) {
       try {
-        const r = await axios.get(`https://www.bling.com.br/Api/v3/lojas/${id}`, {
+        const r = await axios.get(`https://api.bling.com.br/Api/v3/lojas/${id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         lojas.push({ id, dados: r.data?.data });
@@ -969,7 +969,7 @@ app.get('/api/bling/debug', async (req, res) => {
   try {
     const token = await getBlingToken();
     if (!token) return res.status(500).json({ erro: 'Bling não autenticado' });
-    const response = await axios.get('https://www.bling.com.br/Api/v3/pedidos/vendas', {
+    const response = await axios.get('https://api.bling.com.br/Api/v3/pedidos/vendas', {
       headers: { Authorization: `Bearer ${token}` },
       params: { pagina: 1, limite: 10 }
     });
@@ -1004,7 +1004,7 @@ app.get('/api/bling/debug', async (req, res) => {
 app.get('/bling/auth', (req, res) => {
   const baseUrl = process.env.APP_URL || 'https://crm-vendas-rjoy.onrender.com';
   const state = Math.random().toString(36).substring(2);
-  const url = `https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=${process.env.BLING_CLIENT_ID}&redirect_uri=${encodeURIComponent(baseUrl + '/bling/callback')}&state=${state}`;
+  const url = `https://api.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=${process.env.BLING_CLIENT_ID}&redirect_uri=${encodeURIComponent(baseUrl + '/bling/callback')}&state=${state}`;
   res.redirect(url);
 });
 
@@ -1020,7 +1020,7 @@ app.get('/bling/callback', async (req, res) => {
     params.append('redirect_uri', `${baseUrl}/bling/callback`);
     params.append('client_id', process.env.BLING_CLIENT_ID);
     params.append('client_secret', process.env.BLING_CLIENT_SECRET);
-    const response = await axios.post('https://www.bling.com.br/Api/v3/oauth/token',
+    const response = await axios.post('https://api.bling.com.br/Api/v3/oauth/token',
       params.toString(),
       { headers: { Authorization: `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
@@ -1140,7 +1140,7 @@ app.get('/api/debug/bling-mapa-status', async (req, res) => {
     const situacoes = [1, 2, 3, 4, 6, 9, 10, 11];
     const resultado = {};
     for (const sit of situacoes) {
-      const r = await axios.get('https://www.bling.com.br/Api/v3/pedidos/vendas', {
+      const r = await axios.get('https://api.bling.com.br/Api/v3/pedidos/vendas', {
         headers: { Authorization: `Bearer ${token}` },
         params: { pagina: 1, limite: 3, situacao: sit },
       });
@@ -1158,7 +1158,7 @@ app.get('/api/debug/bling-numero/:numero', async (req, res) => {
   try {
     const token = await getBlingToken();
     if (!token) return res.status(500).json({ erro: 'Bling não autenticado' });
-    const response = await axios.get('https://www.bling.com.br/Api/v3/pedidos/vendas', {
+    const response = await axios.get('https://api.bling.com.br/Api/v3/pedidos/vendas', {
       headers: { Authorization: `Bearer ${token}` },
       params: { numero: req.params.numero },
     });
@@ -1178,7 +1178,7 @@ app.get('/api/debug/bling-pedido/:id', async (req, res) => {
   try {
     const token = await getBlingToken();
     if (!token) return res.status(500).json({ erro: 'Bling não autenticado' });
-    const response = await axios.get(`https://www.bling.com.br/Api/v3/pedidos/vendas/${req.params.id}`, {
+    const response = await axios.get(`https://api.bling.com.br/Api/v3/pedidos/vendas/${req.params.id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const p = response.data?.data;
@@ -1196,7 +1196,7 @@ app.get('/api/debug/bling-situacoes-lista', async (req, res) => {
     const resultado = {};
     for (const mod of modulos) {
       try {
-        const r = await axios.get(`https://www.bling.com.br/Api/v3/situacoes/modulos/${mod}`, {
+        const r = await axios.get(`https://api.bling.com.br/Api/v3/situacoes/modulos/${mod}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         resultado[`modulo_${mod}`] = r.data?.data || [];
@@ -1218,7 +1218,7 @@ app.get('/api/debug/bling-contagem-status', async (req, res) => {
     const contagem = {};
     let pagina = 1, total = 0, continuar = true;
     while (continuar && pagina <= 10) {
-      const r = await axios.get('https://www.bling.com.br/Api/v3/pedidos/vendas', {
+      const r = await axios.get('https://api.bling.com.br/Api/v3/pedidos/vendas', {
         headers: { Authorization: `Bearer ${token}` },
         params: { pagina, limite: 100, dataInicial: '01/01/2020' },
       });
@@ -1258,7 +1258,7 @@ app.post('/api/admin/corrigir-status-bling', async (req, res) => {
     for (const p of pedidosDB || []) {
       const blingId = p.id_externo.replace('bling_', '');
       try {
-        const r = await axios.get(`https://www.bling.com.br/Api/v3/pedidos/vendas/${blingId}`, { headers: { Authorization: `Bearer ${token}` } });
+        const r = await axios.get(`https://api.bling.com.br/Api/v3/pedidos/vendas/${blingId}`, { headers: { Authorization: `Bearer ${token}` } });
         const blingData = r.data?.data;
         const situacaoId = Number(blingData?.situacao?.id);
         const situacaoValor = Number(blingData?.situacao?.valor);
