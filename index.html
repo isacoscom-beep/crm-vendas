@@ -175,7 +175,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="sb-item" onclick="nav('marketplaces',this)"><span class="ico">🛒</span>Marketplaces</div>
   <div class="sb-item" onclick="nav('integracoes',this)"><span class="ico">🔗</span>Integrações</div>
   <div class="sb-sec">Análise</div>
-  <div class="sb-item" onclick="nav('relatorios',this)"><span class="ico">📈</span>Relatórios</div>
+  <div class="sb-item" onclick="nav('relatorios',this)"><span class="ico">📈</span>Pedido de Vendas</div>
   <div class="sb-item" onclick="nav('estrategia',this)"><span class="ico">🎯</span>Estratégia</div>
   <div class="sb-item" onclick="nav('notificacoes',this)"><span class="ico">🔔</span>Notificações <span class="sb-badge" id="badge-notif" style="display:none">0</span></div>
   <div class="sb-item" onclick="nav('segmentos',this)"><span class="ico">📡</span>Monitoramento de Clientes</div>
@@ -1100,7 +1100,21 @@ function processCSV(input) {
   const file = input.files[0]; if (!file) return;
   const reader = new FileReader();
   reader.onload = async e => {
-    const lines = e.target.result.split('\n').filter(l => l.trim());
+    const buf = e.target.result;
+    const bytes = new Uint8Array(buf);
+    // Auto-detect encoding: UTF-8 BOM → UTF-8, otherwise test UTF-8 validity, fallback Windows-1252
+    let text;
+    const hasBOM = bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF;
+    if (hasBOM) {
+      text = new TextDecoder('utf-8').decode(buf).slice(1);
+    } else {
+      const utf8 = new TextDecoder('utf-8').decode(buf);
+      text = utf8.includes('�') ? new TextDecoder('windows-1252').decode(buf) : utf8;
+    }
+    // Skip sep= hint line if present (added by Excel export)
+    const allLines = text.split('\n').filter(l => l.trim());
+    const startIdx = allLines[0]?.toLowerCase().startsWith('sep=') ? 1 : 0;
+    const lines = allLines.slice(startIdx);
     if (lines.length < 2) { toast('⚠ Arquivo inválido'); return; }
     const headers = lines[0].split(/[,;\t]/).map(h => h.trim().toLowerCase().replace(/['"]/g,''));
     const clientes = [];
@@ -1129,7 +1143,7 @@ function processCSV(input) {
     }
     input.value = '';
   };
-  reader.readAsText(file, 'UTF-8');
+  reader.readAsArrayBuffer(file);
 }
 
 function formatarTelExport(wa) {
