@@ -644,11 +644,12 @@ async function loadDashboard() {
   const data = await api('/api/dashboard');
   if (!data) return;
 
+  const mesNome = new Date().toLocaleDateString('pt-BR', {month:'long'});
   document.getElementById('dash-metrics').innerHTML = `
-    <div class="metric"><div class="lbl">Total Clientes</div><div class="val">${data.clientes.total}</div><div class="sub"><span class="up">${data.clientes.ativos} ativos</span></div></div>
-    <div class="metric"><div class="lbl">Receita do Mês</div><div class="val">R$${(data.pedidos.receita_mes||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div><div class="sub">${data.pedidos.mes} pedidos</div></div>
-    <div class="metric"><div class="lbl">Oportunidades</div><div class="val">${data.oportunidades.abertas}</div><div class="sub">em aberto</div></div>
-    <div class="metric"><div class="lbl">Pedidos Total</div><div class="val">${data.pedidos.total}</div></div>`;
+    <div class="metric"><div class="lbl">Pedidos do Mês</div><div class="val">${data.pedidos.mes}</div><div class="sub">${mesNome}</div></div>
+    <div class="metric"><div class="lbl">Receita do Mês</div><div class="val">R$${(data.pedidos.receita_mes||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div><div class="sub">${mesNome}</div></div>
+    <div class="metric"><div class="lbl">Clientes Novos</div><div class="val">${data.clientes.novos_mes}</div><div class="sub">${data.clientes.ativos} ativos · ${mesNome}</div></div>
+    <div class="metric"><div class="lbl">Oportunidades</div><div class="val">${data.oportunidades.abertas}</div><div class="sub">em aberto</div></div>`;
 
   document.getElementById('sb-sub').textContent = `${data.clientes.total} clientes`;
   document.getElementById('sb-sync').textContent = '✓ Conectado · ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
