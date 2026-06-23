@@ -760,7 +760,7 @@ async function getBlingToken() {
     const { data: cfg } = await supabase.from('configuracoes').select('valor').eq('chave', 'bling_refresh_token').single();
     if (cfg?.valor) {
       const credentials = Buffer.from(`${process.env.BLING_CLIENT_ID}:${process.env.BLING_CLIENT_SECRET}`).toString('base64');
-      const response = await axios.post('https://api.bling.com.br/Api/v3/oauth/token',
+      const response = await axios.post('https://www.bling.com.br/Api/v3/oauth/token',
         `grant_type=refresh_token&refresh_token=${cfg.valor}`,
         { headers: { Authorization: `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
       );
@@ -1004,7 +1004,7 @@ app.get('/api/bling/debug', async (req, res) => {
 app.get('/bling/auth', (req, res) => {
   const baseUrl = process.env.APP_URL || 'https://crm-vendas-rjoy.onrender.com';
   const state = Math.random().toString(36).substring(2);
-  const url = `https://api.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=${process.env.BLING_CLIENT_ID}&redirect_uri=${encodeURIComponent(baseUrl + '/bling/callback')}&state=${state}`;
+  const url = `https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=${process.env.BLING_CLIENT_ID}&redirect_uri=${encodeURIComponent(baseUrl + '/bling/callback')}&state=${state}`;
   res.redirect(url);
 });
 
@@ -1020,7 +1020,7 @@ app.get('/bling/callback', async (req, res) => {
     params.append('redirect_uri', `${baseUrl}/bling/callback`);
     params.append('client_id', process.env.BLING_CLIENT_ID);
     params.append('client_secret', process.env.BLING_CLIENT_SECRET);
-    const response = await axios.post('https://api.bling.com.br/Api/v3/oauth/token',
+    const response = await axios.post('https://www.bling.com.br/Api/v3/oauth/token',
       params.toString(),
       { headers: { Authorization: `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
