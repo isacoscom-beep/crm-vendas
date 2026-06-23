@@ -146,7 +146,8 @@ async function processarRotaExpedicao(mensagem) {
   if (!clientes || !clientes.length) return;
 
   for (const cliente of clientes) {
-    const msg = `Olá ${cliente.nome}! 😊 Amanhã passaremos na sua região (${cliente.cidade}). Garanta seu pedido até as 15h de hoje para receber amanhã! Qualquer dúvida é só chamar. 🚚`;
+    const nomeMsg = cliente.nome_comprador || cliente.nome.split(' ')[0];
+    const msg = `Olá ${nomeMsg}! 😊 Amanhã passaremos na sua região (${cliente.cidade}). Garanta seu pedido até as 15h de hoje para receber amanhã! Qualquer dúvida é só chamar. 🚚`;
     await enviarWhatsapp(cliente.whatsapp, msg);
     await new Promise(r => setTimeout(r, 1500));
   }
@@ -170,9 +171,10 @@ async function processarMensagemCliente(numero, mensagem) {
     .eq('whatsapp', numero)
     .single();
 
+  const nomeMsg = cliente ? (cliente.nome_comprador || cliente.nome.split(' ')[0]) : '';
   if (msgLower.includes('pedido') || msgLower.includes('quero') || msgLower.includes('comprar')) {
     const resposta = cliente
-      ? `Olá ${cliente.nome}! 😊 Para fazer seu pedido, pode me informar os produtos e quantidades. Lembre-se que pedidos devem ser feitos até as 15h para entrega no dia seguinte! 🚚`
+      ? `Olá ${nomeMsg}! 😊 Para fazer seu pedido, pode me informar os produtos e quantidades. Lembre-se que pedidos devem ser feitos até as 15h para entrega no dia seguinte! 🚚`
       : `Olá! 😊 Para fazer seu pedido, pode me informar os produtos e quantidades. Lembre-se que pedidos devem ser feitos até as 15h para entrega no dia seguinte! 🚚`;
     await enviarWhatsapp(numero, resposta);
   } else if (msgLower.includes('rota') || msgLower.includes('entrega') || msgLower.includes('quando')) {
@@ -189,14 +191,13 @@ async function processarMensagemCliente(numero, mensagem) {
 
       if (proximaRota) {
         const dataFormatada = new Date(proximaRota.data_entrega + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' });
-        await enviarWhatsapp(numero, `Olá ${cliente.nome}! 😊 A próxima entrega na sua região (${cidade}) está prevista para ${dataFormatada}. Faça seu pedido até as 15h do dia anterior! 🚚`);
+        await enviarWhatsapp(numero, `Olá ${nomeMsg}! 😊 A próxima entrega na sua região (${cidade}) está prevista para ${dataFormatada}. Faça seu pedido até as 15h do dia anterior! 🚚`);
       } else {
-        await enviarWhatsapp(numero, `Olá ${cliente?.nome || ''}! 😊 Ainda não temos uma rota confirmada para sua região. Assim que confirmarmos, te avisamos! 🚚`);
+        await enviarWhatsapp(numero, `Olá ${nomeMsg}! 😊 Ainda não temos uma rota confirmada para sua região. Assim que confirmarmos, te avisamos! 🚚`);
       }
     }
   } else if (msgLower.includes('oi') || msgLower.includes('olá') || msgLower.includes('ola') || msgLower.includes('bom dia') || msgLower.includes('boa tarde')) {
-    const nome = cliente?.nome ? ` ${cliente.nome}` : '';
-    await enviarWhatsapp(numero, `Olá${nome}! 😊 Como posso te ajudar? Você pode me perguntar sobre pedidos, entregas ou rotas! 🚚`);
+    await enviarWhatsapp(numero, `Olá${nomeMsg ? ' ' + nomeMsg : ''}! 😊 Como posso te ajudar? Você pode me perguntar sobre pedidos, entregas ou rotas! 🚚`);
   }
 
   await supabase.from('conversas').upsert({
@@ -294,7 +295,8 @@ app.post('/api/rotas-diarias', async (req, res) => {
   if (disparar) {
     const { data: clientes } = await supabase.from('clientes').select('*').in('cidade', cidades).eq('status', 'Ativo').not('whatsapp', 'is', null);
     for (const cliente of (clientes || [])) {
-      const msg = `Olá ${cliente.nome}! 😊 Amanhã passaremos na sua região (${cliente.cidade}). Garanta seu pedido até as 15h de hoje para receber amanhã! Qualquer dúvida é só chamar. 🚚`;
+      const nomeMsg = cliente.nome_comprador || cliente.nome.split(' ')[0];
+      const msg = `Olá ${nomeMsg}! 😊 Amanhã passaremos na sua região (${cliente.cidade}). Garanta seu pedido até as 15h de hoje para receber amanhã! Qualquer dúvida é só chamar. 🚚`;
       await enviarWhatsapp(cliente.whatsapp, msg);
       await new Promise(r => setTimeout(r, 1500));
     }
@@ -1149,7 +1151,8 @@ app.post('/api/disparar', async (req, res) => {
 
   let enviados = 0;
   for (const c of clientes) {
-    const msg = mensagem.replace('{nome}', c.nome).replace('{cidade}', c.cidade);
+    const nomeMsg = c.nome_comprador || c.nome.split(' ')[0] || c.nome || '';
+    const msg = mensagem.replace('{nome}', nomeMsg).replace('{cidade}', c.cidade);
     const resultado = await enviarWhatsapp(c.whatsapp, msg);
     if (resultado.ok) enviados++;
     await new Promise(r => setTimeout(r, 1500));
@@ -1329,8 +1332,9 @@ app.post('/api/disparar-lista', async (req, res) => {
   let enviados = 0;
   for (const c of clientes) {
     if (!c.whatsapp) continue;
+    const nomeDisp = c.nome_comprador || (c.nome || c.cliente || '').split(' ')[0] || '';
     const msg = mensagem
-      .replace('{nome}', c.nome || c.cliente || '')
+      .replace('{nome}', nomeDisp)
       .replace('{periodicidade}', c.media_recorrencia_dias || '?');
     const resultado = await enviarWhatsapp(c.whatsapp, msg);
     if (resultado.ok) enviados++;
