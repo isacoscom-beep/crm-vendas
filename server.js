@@ -969,6 +969,28 @@ app.get('/api/bling/debug', async (req, res) => {
   try {
     const token = await getBlingToken();
     if (!token) return res.status(500).json({ erro: 'Bling não autenticado' });
+
+    // Se passar ?junho=1, busca TODOS os pedidos de junho e retorna resumo
+    if (req.query.junho) {
+      let pagina = 1, continuar = true, totalValor = 0, pedidosJunho = [];
+      while (continuar) {
+        const r = await axios.get('https://api.bling.com.br/Api/v3/pedidos/vendas', {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { pagina, limite: 100, dataInicial: '01/06/2026', dataFinal: '30/06/2026' },
+        });
+        const dados = r.data?.data || [];
+        if (!dados.length) { continuar = false; break; }
+        for (const p of dados) {
+          totalValor += parseFloat(p.total || 0);
+          pedidosJunho.push({ data: p.data, contato: p.contato?.nome, total: p.total, situacao_id: p.situacao?.id, situacao_nome: p.situacao?.nome, seria_importado: (Number(p.situacao?.valor) === 1 || SITUACOES_CONCLUIDAS.has(Number(p.situacao?.id))) });
+        }
+        pagina++;
+        await new Promise(r => setTimeout(r, 300));
+        if (dados.length < 100) continuar = false;
+      }
+      return res.json({ total_pedidos: pedidosJunho.length, total_valor: totalValor.toFixed(2), pedidos: pedidosJunho });
+    }
+
     const response = await axios.get('https://api.bling.com.br/Api/v3/pedidos/vendas', {
       headers: { Authorization: `Bearer ${token}` },
       params: { pagina: 1, limite: 10 }
@@ -979,7 +1001,6 @@ app.get('/api/bling/debug', async (req, res) => {
       data: p.data,
       loja_nome: p.loja?.nome,
       loja_id: p.loja?.id,
-      numeroPedidoLoja: p.numeroPedidoLoja,
       situacao_id: p.situacao?.id,
       situacao_valor: p.situacao?.valor,
       situacao_nome: p.situacao?.nome,
