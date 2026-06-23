@@ -345,7 +345,7 @@ app.get('/api/atividades', async (req, res) => {
 app.get('/api/dashboard', async (req, res) => {
   const [clientes, pedidos, oportunidades, rotas] = await Promise.all([
     supabase.from('clientes').select('id, status, cidade, canal, criado_em'),
-    supabase.from('pedidos').select('id, valor, canal, status, criado_em').limit(2000),
+    supabase.from('pedidos').select('id, valor, canal, status, criado_em, cliente_nome').limit(2000),
     supabase.from('oportunidades').select('id, valor, etapa'),
     supabase.from('rotas_diarias').select('id, cidades, data_entrega').order('data_entrega', { ascending: false }).limit(5),
   ]);
