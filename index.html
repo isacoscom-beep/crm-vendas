@@ -326,7 +326,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 <!-- MARKETPLACES -->
 <div id="page-marketplaces" class="page">
-  <div class="g4" style="margin-bottom:16px">
+  <div class="g4" id="ped-metrics" style="margin-bottom:16px">
     <div class="metric"><div class="lbl">Total de Pedidos</div><div class="val" id="ped-total">—</div></div>
     <div class="metric"><div class="lbl">Receita Total</div><div class="val" id="ped-receita">—</div></div>
     <div class="metric"><div class="lbl">Este mês</div><div class="val" id="ped-mes">—</div></div>
@@ -878,15 +878,21 @@ async function loadPedidos() {
   const path = '/api/pedidos' + (params.length ? '?' + params.join('&') : '');
   const pedidos = await api(path) || [];
   const total = pedidos.reduce((s, p) => s + parseFloat(p.valor || 0), 0);
-  const hoje = new Date();
-  const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0, 10);
-  const mes = pedidos.filter(p => (p.criado_em || '').slice(0, 10) >= inicioMes).length;
   const ticket = pedidos.length ? total / pedidos.length : 0;
+  const clientes = new Set(pedidos.map(p => p.cliente_nome).filter(Boolean)).size;
 
-  document.getElementById('ped-total').textContent = pedidos.length;
-  document.getElementById('ped-receita').textContent = 'R$' + total.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
-  document.getElementById('ped-mes').textContent = mes;
-  document.getElementById('ped-ticket').textContent = 'R$' + ticket.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const temFiltro = canal || inicio || fim;
+  const fmtData = d => d ? new Date(d + 'T12:00').toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'}) : '';
+  const periodoLabel = inicio || fim
+    ? (inicio && fim ? `${fmtData(inicio)} – ${fmtData(fim)}` : inicio ? `a partir de ${fmtData(inicio)}` : `até ${fmtData(fim)}`)
+    : canal ? canal : 'Todos os canais';
+
+  const fmt = v => v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  document.getElementById('ped-metrics').innerHTML = `
+    <div class="metric"><div class="lbl">${temFiltro ? 'Pedidos no Período' : 'Total de Pedidos'}</div><div class="val">${pedidos.length}</div><div class="sub">${periodoLabel}</div></div>
+    <div class="metric"><div class="lbl">${temFiltro ? 'Receita no Período' : 'Receita Total'}</div><div class="val">R$${fmt(total)}</div><div class="sub">${periodoLabel}</div></div>
+    <div class="metric"><div class="lbl">Ticket Médio</div><div class="val">R$${fmt(ticket)}</div><div class="sub">${pedidos.length} pedido${pedidos.length !== 1 ? 's' : ''}</div></div>
+    <div class="metric"><div class="lbl">Clientes únicos</div><div class="val">${clientes}</div><div class="sub">${periodoLabel}</div></div>`;
 
   const tbody = document.getElementById('tbl-pedidos');
   const empty = document.getElementById('ped-empty');
