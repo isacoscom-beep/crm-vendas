@@ -215,14 +215,11 @@ async function processarMensagemCliente(numero, mensagem) {
 app.get('/api/clientes', async (req, res) => {
   const { rota, status, busca, tipo, sem_comprador } = req.query;
 
-  // Modo especial: retorna apenas clientes sem nome_comprador (null OU string vazia)
+  // Modo especial: retorna apenas clientes sem nome_comprador
   if (sem_comprador) {
-    const [r1, r2] = await Promise.all([
-      supabase.from('clientes').select('id, nome, whatsapp, nome_comprador').is('nome_comprador', null).order('nome').limit(2000),
-      supabase.from('clientes').select('id, nome, whatsapp, nome_comprador').eq('nome_comprador', '').order('nome').limit(2000),
-    ]);
-    const combinados = [...(r1.data || []), ...(r2.data || [])].sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
-    return res.json(combinados);
+    const { data: todos } = await supabase.from('clientes').select('id, nome, whatsapp, nome_comprador').order('nome').limit(2000);
+    const semComprador = (todos || []).filter(c => !c.nome_comprador || !c.nome_comprador.trim());
+    return res.json(semComprador);
   }
 
   let query = supabase.from('clientes').select('*').order('nome').limit(2000);
