@@ -107,7 +107,9 @@ app.post('/webhook/whatsapp', async (req, res) => {
 
   const numeroRemetente = body.phone.replace(/\D/g, '');
   const mensagem = body.text.message;
-  const expedNumero = EXPEDICAO_NUMBER.replace(/\D/g, '');
+
+  const { data: cfgExpedicao } = await supabase.from('configuracoes').select('valor').eq('chave', 'expedicao_numero').single();
+  const expedNumero = (cfgExpedicao?.valor || EXPEDICAO_NUMBER).replace(/\D/g, '');
 
   if (numeroRemetente === expedNumero) {
     await processarRotaExpedicao(mensagem);
@@ -1467,6 +1469,22 @@ setInterval(async () => {
     console.error('[Auto-sync] Erro:', err.message);
   }
 }, SEIS_HORAS);
+
+// ============================================================
+// ============================================================
+// CONFIG — NÚMERO DA EXPEDIÇÃO
+// ============================================================
+app.get('/api/config/expedicao', async (req, res) => {
+  const { data } = await supabase.from('configuracoes').select('valor').eq('chave', 'expedicao_numero').single();
+  res.json({ numero: data?.valor || EXPEDICAO_NUMBER });
+});
+
+app.post('/api/config/expedicao', async (req, res) => {
+  const { numero } = req.body;
+  if (!numero) return res.status(400).json({ erro: 'Número inválido' });
+  await supabase.from('configuracoes').upsert({ chave: 'expedicao_numero', valor: numero.replace(/\D/g, '') }, { onConflict: 'chave' });
+  res.json({ ok: true });
+});
 
 // ============================================================
 // INICIAR SERVIDOR

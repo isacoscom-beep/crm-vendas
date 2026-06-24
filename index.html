@@ -299,6 +299,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <thead><tr><th>Serviço</th><th>Função</th><th>Status</th><th>Ação</th></tr></thead>
       <tbody>
         <tr><td><strong>💬 Z-API / WhatsApp</strong></td><td>Bot de rotas + mensagens automáticas</td><td><span class="badge bg">✓ Conectado</span></td><td><button class="btn" onclick="testarWA()">Testar</button></td></tr>
+        <tr><td><strong>🚚 Expedição WhatsApp</strong></td><td>Número que envia as rotas automaticamente (só dígitos, com DDI)</td><td><span class="badge bg">✓ Configurável</span></td><td style="display:flex;gap:6px;align-items:center"><input type="text" id="expedicao-numero" placeholder="5519999999999" class="btn" style="font-size:12px;width:155px"><button class="btn primary" onclick="salvarExpedicao()">Salvar</button></td></tr>
         <tr><td><strong>🔧 Normalizar Canais</strong></td><td>Converte pedidos "Site" e "Bling" para WhatsApp no banco</td><td><span class="badge ba">⚙️ Manutenção</span></td><td><button class="btn primary" onclick="normalizarCanais()">▶ Executar</button></td></tr>
         <tr><td><strong>🔄 Corrigir Status Bling</strong></td><td>Revalida o status de pedidos "Atendido" diretamente no Bling e corrige inconsistências</td><td><span class="badge ba">⚙️ Manutenção</span></td><td><button class="btn primary" onclick="corrigirStatusBling()">▶ Executar</button></td></tr>
         <tr><td><strong>🗄️ Supabase</strong></td><td>Banco de dados — salva tudo</td><td><span class="badge" id="st-supabase">⏳ Verificando</span></td><td>—</td></tr>
@@ -549,6 +550,7 @@ function renderPage(id) {
   else if (id === 'pipeline') loadPipeline();
   else if (id === 'whatsapp') loadWhatsapp();
   else if (id === 'marketplaces') loadPedidos();
+  else if (id === 'integracoes') loadIntegracoes();
   else if (id === 'estrategia') loadEstrategia();
   else if (id === 'notificacoes') loadNotificacoes();
   else if (id === 'segmentos') loadSegmentos();
@@ -1019,6 +1021,18 @@ async function normalizarCanais() {
   const r = await api('/api/admin/normalizar-canais', 'POST');
   if (r?.ok) toast(`✓ ${r.atualizados} pedido(s) atualizados para WhatsApp`);
   else toast('⚠ Erro ao normalizar');
+}
+
+async function loadIntegracoes() {
+  const cfg = await api('/api/config/expedicao');
+  if (cfg?.numero) document.getElementById('expedicao-numero').value = cfg.numero;
+}
+
+async function salvarExpedicao() {
+  const numero = document.getElementById('expedicao-numero').value.trim();
+  if (!numero) { toast('⚠ Digite o número com DDI (ex: 5519999999999)'); return; }
+  const r = await api('/api/config/expedicao', 'POST', { numero });
+  if (r?.ok) toast('✓ Número da expedição salvo! Próxima mensagem já será capturada.');
 }
 
 async function testarWA() {
