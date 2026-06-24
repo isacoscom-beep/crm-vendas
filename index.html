@@ -170,7 +170,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="sb-item" onclick="nav('pipeline',this)"><span class="ico">💰</span>Pipeline</div>
   <div class="sb-sec">Canais</div>
   <div class="sb-item" onclick="nav('whatsapp',this)"><span class="ico">💬</span>WhatsApp</div>
-  <div class="sb-item" onclick="nav('rotas',this)"><span class="ico">🚚</span>Rotas do Dia</div>
   <div class="sb-item" onclick="nav('marketplaces',this)"><span class="ico">🛒</span>Marketplaces</div>
   <div class="sb-item" onclick="nav('integracoes',this)"><span class="ico">🔗</span>Integrações</div>
   <div class="sb-sec">Análise</div>
@@ -211,7 +210,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   </div>
   <div class="g2">
     <div class="card">
-      <div class="card-hdr"><span class="card-title">Rotas Recentes</span><button class="btn" onclick="nav('rotas',document.querySelector('[onclick*=rotas]'))" style="font-size:11px">Ver todas →</button></div>
+      <div class="card-hdr"><span class="card-title">Rotas Recentes</span><button class="btn" onclick="nav('whatsapp',document.querySelector('[onclick*=whatsapp]'))" style="font-size:11px">Ver todas →</button></div>
       <div id="dash-rotas"></div>
     </div>
     <div class="card">
@@ -260,41 +259,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <button class="btn primary" style="width:100%" onclick="dispararMensagem()">📤 Disparar para Clientes Selecionados</button>
     </div>
   </div>
-</div>
-
-<!-- ROTAS DO DIA -->
-<div id="page-rotas" class="page">
-  <div class="g3" style="margin-bottom:16px">
-    <div class="metric"><div class="lbl">Rotas este mês</div><div class="val" id="rot-total">—</div></div>
-    <div class="metric"><div class="lbl">Última rota</div><div class="val" id="rot-ultima" style="font-size:16px">—</div></div>
-    <div class="metric"><div class="lbl">Clientes notificados</div><div class="val" id="rot-notif">—</div></div>
-  </div>
-  <div class="g2">
-    <div class="card">
-      <div class="card-hdr"><span class="card-title">Histórico de Rotas</span><button class="btn" onclick="loadRotas()">🔄 Atualizar</button></div>
-      <p style="font-size:12px;color:var(--text2);margin-bottom:12px">As rotas são geradas automaticamente quando a expedição envia a mensagem no WhatsApp.</p>
-      <div id="rotas-list"></div>
-      <div id="rotas-empty" class="empty" style="display:none"><div class="ei">🚚</div><p>Nenhuma rota processada ainda.<br>Quando a expedição enviar a mensagem de rota, ela aparecerá aqui automaticamente.</p></div>
-    </div>
-    <div class="card">
-      <div class="card-hdr"><span class="card-title">Criar Rota Manual</span></div>
-      <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Use quando quiser criar uma rota sem esperar a expedição.</p>
-      <div class="fg"><label>Data de Entrega</label><input type="date" id="rot-data"></div>
-      <div class="fg"><label>Cidades da Rota</label>
-        <select id="rot-cidades" multiple style="height:120px">
-          <option>Barueri</option><option>Cajamar</option><option>Campinas</option><option>Carapicuíba</option>
-          <option>Cotia</option><option>Guarulhos</option><option>Jandira</option><option>Jundiaí</option>
-          <option>Mauá</option><option>Osasco</option><option>São José dos Campos</option><option>Grande SP</option>
-          <option>Zona Norte</option><option>Zona Leste</option><option>Zona Sul</option><option>Lapa</option>
-          <option>Butantã</option><option>Pinheiros</option><option>Vila Mariana</option><option>Moema</option>
-        </select>
-        <span style="font-size:10px;color:var(--text3)">Segure Ctrl para selecionar mais de uma</span>
-      </div>
-      <div style="display:flex;gap:8px">
-        <button class="btn" style="flex:1" onclick="criarRota(false)">Salvar sem disparar</button>
-        <button class="btn primary" style="flex:1" onclick="criarRota(true)">📤 Salvar e Disparar</button>
-      </div>
-    </div>
+  <div class="card" style="margin-top:16px">
+    <div class="card-hdr"><span class="card-title">Histórico de Rotas</span><button class="btn" onclick="loadRotas()">🔄 Atualizar</button></div>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:12px">As rotas são geradas automaticamente quando a expedição envia a mensagem no WhatsApp.</p>
+    <div id="rotas-list"></div>
+    <div id="rotas-empty" class="empty" style="display:none"><div class="ei">🚚</div><p>Nenhuma rota processada ainda.<br>Quando a expedição enviar a mensagem de rota, ela aparecerá aqui automaticamente.</p></div>
   </div>
 </div>
 
@@ -555,7 +524,6 @@ const pageActions = {
   dashboard:{ title:'Dashboard', btn:'', modal:'' },
   pipeline:{ title:'Pipeline de Vendas', btn:'+ Oportunidade', modal:'oportunidade' },
   whatsapp:{ title:'WhatsApp', btn:'', modal:'' },
-  rotas:{ title:'Rotas do Dia', btn:'', modal:'' },
   marketplaces:{ title:'Marketplaces', btn:'+ Pedido', modal:'pedido' },
   integracoes:{ title:'Integrações', btn:'', modal:'' },
   estrategia:{ title:'Estratégia', btn:'', modal:'' },
@@ -580,7 +548,6 @@ function renderPage(id) {
   if (id === 'dashboard') loadDashboard();
   else if (id === 'pipeline') loadPipeline();
   else if (id === 'whatsapp') loadWhatsapp();
-  else if (id === 'rotas') loadRotas();
   else if (id === 'marketplaces') loadPedidos();
   else if (id === 'estrategia') loadEstrategia();
   else if (id === 'notificacoes') loadNotificacoes();
@@ -669,6 +636,7 @@ async function loadWhatsapp() {
   const clientes = await api('/api/clientes') || [];
   const comWA = clientes.filter(c => c.whatsapp).length;
   document.getElementById('wa-tot').textContent = comWA;
+  loadRotas();
 }
 
 async function loadConversas() {
@@ -701,11 +669,6 @@ async function dispararMensagem() {
 // ── ROTAS ────────────────────────────────────────────────────
 async function loadRotas() {
   const rotas = await api('/api/rotas-diarias') || [];
-  document.getElementById('rot-total').textContent = rotas.length;
-  if (rotas.length) {
-    const ultima = rotas[0];
-    document.getElementById('rot-ultima').textContent = new Date(ultima.data_entrega + 'T12:00:00').toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'});
-  }
   const list = document.getElementById('rotas-list');
   const empty = document.getElementById('rotas-empty');
   if (!rotas.length) { list.innerHTML = ''; empty.style.display = ''; return; }
@@ -715,20 +678,6 @@ async function loadRotas() {
     <div class="rc-cidades">${(r.cidades||[]).join(' · ')}</div>
     ${r.mensagem_original ? `<div style="font-size:10px;color:var(--text3);margin-top:6px;font-style:italic">"${r.mensagem_original.substring(0,80)}..."</div>` : ''}
   </div>`).join('');
-}
-
-async function criarRota(disparar) {
-  const data = document.getElementById('rot-data').value;
-  const sel = document.getElementById('rot-cidades');
-  const cidades = [...sel.selectedOptions].map(o => o.value);
-  if (!data) { toast('⚠ Selecione a data de entrega'); return; }
-  if (!cidades.length) { toast('⚠ Selecione pelo menos uma cidade'); return; }
-  toast(disparar ? '📤 Criando rota e disparando...' : '💾 Salvando rota...');
-  const r = await api('/api/rotas-diarias', 'POST', { cidades, data_entrega: data, disparar });
-  if (r) {
-    toast(disparar ? `✓ Rota criada! ${r.clientes_notificados} clientes notificados` : '✓ Rota salva');
-    loadRotas();
-  }
 }
 
 // ── PEDIDOS ──────────────────────────────────────────────────
