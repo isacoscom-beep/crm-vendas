@@ -167,7 +167,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   </div>
   <div class="sb-sec">Principal</div>
   <div class="sb-item active" onclick="nav('dashboard',this)"><span class="ico">📊</span>Dashboard</div>
-  <div class="sb-item" onclick="nav('clientes',this)"><span class="ico">👥</span>Clientes <span class="sb-badge" id="badge-novos" style="display:none">0</span></div>
   <div class="sb-item" onclick="nav('pipeline',this)"><span class="ico">💰</span>Pipeline</div>
   <div class="sb-sec">Canais</div>
   <div class="sb-item" onclick="nav('whatsapp',this)"><span class="ico">💬</span>WhatsApp</div>
@@ -175,7 +174,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
   <div class="sb-item" onclick="nav('marketplaces',this)"><span class="ico">🛒</span>Marketplaces</div>
   <div class="sb-item" onclick="nav('integracoes',this)"><span class="ico">🔗</span>Integrações</div>
   <div class="sb-sec">Análise</div>
-  <div class="sb-item" onclick="nav('relatorios',this)"><span class="ico">📈</span>Pedido de Vendas</div>
   <div class="sb-item" onclick="nav('estrategia',this)"><span class="ico">🎯</span>Estratégia</div>
   <div class="sb-item" onclick="nav('notificacoes',this)"><span class="ico">🔔</span>Notificações <span class="sb-badge" id="badge-notif" style="display:none">0</span></div>
   <div class="sb-item" onclick="nav('segmentos',this)"><span class="ico">📡</span>Monitoramento de Clientes</div>
@@ -191,8 +189,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 <!-- TOPBAR -->
 <div id="topbar">
   <span class="tb-title" id="page-title">Dashboard</span>
-  <div class="search"><span>🔍</span><input type="text" id="busca" placeholder="Buscar cliente..." oninput="buscarCliente(this.value)"></div>
-  <button class="btn primary" id="btn-novo" onclick="openModal('cliente')">+ Novo Cliente</button>
+  <button class="btn primary" id="btn-novo" onclick="openModal('cliente')" style="display:none">+ Novo</button>
   <div class="avatar">VN</div>
 </div>
 
@@ -221,29 +218,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div class="card-hdr"><span class="card-title">Bling — Estoque</span><button class="btn success" onclick="sincBling()" style="font-size:11px">🔄 Sincronizar</button></div>
       <div id="dash-bling"><div style="font-size:12px;color:var(--text3)">Clique em sincronizar para carregar do Bling</div></div>
     </div>
-  </div>
-</div>
-
-<!-- CLIENTES -->
-<div id="page-clientes" class="page">
-  <div class="g4" style="margin-bottom:16px" id="cli-metrics"></div>
-  <div class="card">
-    <div class="card-hdr">
-      <span class="card-title">Clientes Cadastrados</span>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <select id="fil-tipo" class="btn" onchange="renderClientes()"><option value="">Todos os Tipos</option><option value="Cliente">Cliente</option><option value="Contato">Contato / Prospect</option></select>
-        <select id="fil-status" class="btn" onchange="renderClientes()"><option value="">Todos os Status</option><option>Ativo</option><option>Seguimento</option><option>Inativo</option></select>
-        <select id="fil-cidade" class="btn" onchange="renderClientes()"><option value="">Todas as Cidades</option></select>
-        <select id="fil-contato" class="btn" onchange="renderClientes()"><option value="">Todos os Contatos</option><option value="whatsapp">Com WhatsApp</option><option value="email">Com Email</option><option value="sem">Sem Contato</option></select>
-        <button class="btn success" onclick="msgMassaContatos()" id="btn-msg-massa" style="display:none">📤 Msg em Massa</button>
-        <button class="btn primary" onclick="openModal('cliente')">+ Novo</button>
-      </div>
-    </div>
-    <div class="tbl-wrap"><table class="tbl">
-      <thead><tr><th>Nome</th><th>Cidade</th><th>WhatsApp</th><th>Email</th><th>Canal</th><th>Último Pedido</th><th>Status</th><th></th></tr></thead>
-      <tbody id="tbl-clientes"></tbody>
-    </table></div>
-    <div id="cli-empty" class="empty" style="display:none"><div class="ei">👥</div><p>Nenhum cliente encontrado.<br>Clique em "+ Novo" ou importe sua planilha.</p></div>
   </div>
 </div>
 
@@ -368,15 +342,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     </table>
   </div>
   <div id="int-info" class="card" style="display:none"></div>
-</div>
-
-<!-- RELATÓRIOS -->
-<div id="page-relatorios" class="page">
-  <div class="g4" style="margin-bottom:16px" id="rel-metrics"></div>
-  <div class="g2">
-    <div class="card"><div class="card-hdr"><span class="card-title">Receita por Canal</span></div><div id="rel-canais"></div></div>
-    <div class="card"><div class="card-hdr"><span class="card-title">Clientes por Cidade</span></div><div id="rel-cidades"></div></div>
-  </div>
 </div>
 
 <!-- ESTRATÉGIA -->
@@ -587,14 +552,12 @@ const API = window.location.origin; // aponta para o servidor Railway
 
 // ── NAVEGAÇÃO ───────────────────────────────────────────────
 const pageActions = {
-  dashboard:{ title:'Dashboard', btn:'+ Novo Cliente', modal:'cliente' },
-  clientes:{ title:'Clientes', btn:'+ Novo Cliente', modal:'cliente' },
+  dashboard:{ title:'Dashboard', btn:'', modal:'' },
   pipeline:{ title:'Pipeline de Vendas', btn:'+ Oportunidade', modal:'oportunidade' },
   whatsapp:{ title:'WhatsApp', btn:'', modal:'' },
   rotas:{ title:'Rotas do Dia', btn:'', modal:'' },
   marketplaces:{ title:'Marketplaces', btn:'+ Pedido', modal:'pedido' },
   integracoes:{ title:'Integrações', btn:'', modal:'' },
-  relatorios:{ title:'Relatórios', btn:'', modal:'' },
   estrategia:{ title:'Estratégia', btn:'', modal:'' },
   notificacoes:{ title:'Notificações', btn:'', modal:'' },
   segmentos:{ title:'Monitoramento de Clientes', btn:'', modal:'' },
@@ -615,12 +578,10 @@ function nav(id, el) {
 
 function renderPage(id) {
   if (id === 'dashboard') loadDashboard();
-  else if (id === 'clientes') loadClientes();
   else if (id === 'pipeline') loadPipeline();
   else if (id === 'whatsapp') loadWhatsapp();
   else if (id === 'rotas') loadRotas();
   else if (id === 'marketplaces') loadPedidos();
-  else if (id === 'relatorios') loadRelatorios();
   else if (id === 'estrategia') loadEstrategia();
   else if (id === 'notificacoes') loadNotificacoes();
   else if (id === 'segmentos') loadSegmentos();
@@ -667,106 +628,10 @@ async function loadDashboard() {
     || '<tr><td colspan="2" style="text-align:center;color:var(--text3)">Nenhuma atividade ainda</td></tr>';
 }
 
-// ── CLIENTES ─────────────────────────────────────────────────
-let todosClientes = [];
-async function loadClientes() {
-  todosClientes = await api('/api/clientes') || [];
-  renderClientes();
-
-  // Cidades para filtro
-  const cidades = [...new Set(todosClientes.map(c => c.cidade).filter(Boolean))].sort();
-  const sel = document.getElementById('fil-cidade');
-  sel.innerHTML = '<option value="">Todas as Cidades</option>' + cidades.map(c => `<option>${c}</option>`).join('');
-
-  // Metrics
-  const ativos = todosClientes.filter(c => c.status === 'Ativo').length;
-  const comWA = todosClientes.filter(c => c.whatsapp).length;
-  document.getElementById('cli-metrics').innerHTML = `
-    <div class="metric"><div class="lbl">Total</div><div class="val">${todosClientes.length}</div></div>
-    <div class="metric"><div class="lbl">Ativos</div><div class="val up">${ativos}</div></div>
-    <div class="metric"><div class="lbl">Com WhatsApp</div><div class="val">${comWA}</div></div>
-    <div class="metric"><div class="lbl">Cidades</div><div class="val">${cidades.length}</div></div>`;
-}
-
-function badgeTipo(tipo) {
-  if (tipo === 'Cliente') return '<span class="badge bg" style="background:#10b981">Cliente</span>';
-  return '<span class="badge" style="background:#f59e0b;color:#fff">Prospect</span>';
-}
-
-function renderClientes() {
-  const ft = document.getElementById('fil-tipo')?.value || '';
-  const fs = document.getElementById('fil-status')?.value || '';
-  const fc = document.getElementById('fil-cidade')?.value || '';
-  const fct = document.getElementById('fil-contato')?.value || '';
-  const filtered = todosClientes.filter(c =>
-    (!ft || (c.tipo || 'Contato') === ft) &&
-    (!fs || c.status === fs) &&
-    (!fc || c.cidade === fc) &&
-    (!fct ||
-      (fct === 'whatsapp' && c.whatsapp) ||
-      (fct === 'email' && c.email && !c.whatsapp) ||
-      (fct === 'sem' && !c.whatsapp && !c.email)
-    )
-  );
-  const btnMassa = document.getElementById('btn-msg-massa');
-  if (btnMassa) btnMassa.style.display = ft === 'Contato' ? '' : 'none';
-  const tbody = document.getElementById('tbl-clientes');
-  const empty = document.getElementById('cli-empty');
-  if (!filtered.length) { tbody.innerHTML = ''; empty.style.display = ''; return; }
-  empty.style.display = 'none';
-  tbody.innerHTML = filtered.map(c => `<tr>
-    <td><strong>${c.nome}</strong>${c.nome_comprador ? `<br><span style="font-size:11px;color:var(--text2)">👤 ${c.nome_comprador}</span>` : ''}<br>${badgeTipo(c.tipo || 'Contato')}</td>
-    <td>${c.cidade || '—'}</td>
-    <td>${c.whatsapp ? `<span class="badge bg">WA</span> <span style="font-size:10px;color:var(--text3)">${formatWA(c.whatsapp)}</span>` : '<span class="badge bgr">—</span>'}</td>
-    <td>${c.email ? `<span class="badge bb">Email</span> <span style="font-size:10px;color:var(--text3)">${c.email}</span>` : '<span class="badge bgr">—</span>'}</td>
-    <td>${badgeCanal(c.canal)}</td>
-    <td>${c.ultimo_pedido ? new Date(c.ultimo_pedido + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}</td>
-    <td>${badgeStatus(c.status)}</td>
-    <td style="white-space:nowrap">
-      <button class="btn" onclick="editCliente('${c.id}')" style="font-size:11px;padding:3px 8px">✏️</button>
-      <button class="btn danger" onclick="delCliente('${c.id}')" style="font-size:11px;padding:3px 8px;margin-left:4px">🗑</button>
-    </td>
-  </tr>`).join('');
-}
-
-async function msgMassaContatos() {
-  const contatos = todosClientes.filter(c => (c.tipo || 'Contato') === 'Contato' && c.whatsapp);
-  if (!contatos.length) { alert('Nenhum contato/prospect com WhatsApp encontrado.'); return; }
-  const msg = prompt(`Enviar mensagem para ${contatos.length} contatos/prospects com WhatsApp.\n\nDigite a mensagem (use {nome} para personalizar):`);
-  if (!msg) return;
-  if (!confirm(`Confirma envio para ${contatos.length} contatos?`)) return;
-  let enviados = 0, erros = 0;
-  for (const c of contatos) {
-    const texto = msg.replace(/\{nome\}/g, c.nome.split(' ')[0]);
-    try {
-      await api('/api/whatsapp/enviar', 'POST', { numero: c.whatsapp, mensagem: texto });
-      enviados++;
-      await new Promise(r => setTimeout(r, 1200));
-    } catch { erros++; }
-  }
-  alert(`Enviado! ${enviados} mensagens enviadas, ${erros} erros.`);
-}
-
-function buscarCliente(q) {
-  if (!q) { renderClientes(); return; }
-  const ql = q.toLowerCase();
-  const filtered = todosClientes.filter(c => c.nome?.toLowerCase().includes(ql) || c.cidade?.toLowerCase().includes(ql) || c.whatsapp?.includes(q));
-  const tbody = document.getElementById('tbl-clientes');
-  if (document.getElementById('page-clientes').classList.contains('active')) {
-    tbody.innerHTML = filtered.map(c => `<tr><td><strong>${c.nome}</strong></td><td>${c.cidade||'—'}</td><td>${c.whatsapp ? formatWA(c.whatsapp) : '—'}</td><td>${badgeCanal(c.canal)}</td><td>—</td><td>${badgeStatus(c.status)}</td><td></td></tr>`).join('');
-  }
-}
-
-async function editCliente(id) {
-  const c = todosClientes.find(x => x.id === id);
-  if (c) openModal('cliente', c);
-}
-
 async function delCliente(id) {
   if (!confirm('Remover este cliente?')) return;
   await api('/api/clientes/' + id, 'DELETE');
   toast('✓ Cliente removido');
-  loadClientes();
 }
 
 // ── PIPELINE ─────────────────────────────────────────────────
@@ -932,35 +797,6 @@ async function sincBlingPedidos() {
 }
 
 // ── RELATÓRIOS ───────────────────────────────────────────────
-async function loadRelatorios() {
-  const [clientes, pedidos] = await Promise.all([api('/api/clientes'), api('/api/pedidos')]);
-  const c = clientes || [], p = pedidos || [];
-  const total = p.reduce((s, x) => s + parseFloat(x.valor || 0), 0);
-  const ticket = p.length ? total / p.length : 0;
-  const ativos = c.filter(x => x.status === 'Ativo').length;
-
-  document.getElementById('rel-metrics').innerHTML = `
-    <div class="metric"><div class="lbl">Receita Total</div><div class="val">R$${total.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div></div>
-    <div class="metric"><div class="lbl">Pedidos</div><div class="val">${p.length}</div></div>
-    <div class="metric"><div class="lbl">Ticket Médio</div><div class="val">R$${ticket.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div></div>
-    <div class="metric"><div class="lbl">Clientes Ativos</div><div class="val">${ativos}</div></div>`;
-
-  const canais = {};
-  p.forEach(x => canais[x.canal] = (canais[x.canal] || 0) + parseFloat(x.valor || 0));
-  const maxC = Math.max(...Object.values(canais), 1);
-  const cores = { Site:'var(--blue)', WhatsApp:'#25D366', 'Mercado Livre':'#F7C223', Shopee:'#EE4D2D', Amazon:'#FF9900' };
-  document.getElementById('rel-canais').innerHTML = Object.entries(canais).map(([k, v]) =>
-    `<div class="bar-row"><div class="bar-lbl">${k}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/maxC*100)}%;background:${cores[k]||'var(--blue)'}"></div></div><div class="bar-val">R$${Math.round(v)}</div></div>`
-  ).join('') || '<div style="color:var(--text3);font-size:12px">Nenhum pedido ainda</div>';
-
-  const cidades = {};
-  c.forEach(x => { if (x.cidade) cidades[x.cidade] = (cidades[x.cidade] || 0) + 1; });
-  const maxR = Math.max(...Object.values(cidades), 1);
-  document.getElementById('rel-cidades').innerHTML = Object.entries(cidades).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k, v]) =>
-    `<div class="bar-row"><div class="bar-lbl">${k}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(v/maxR*100)}%;background:var(--blue)"></div></div><div class="bar-val">${v}</div></div>`
-  ).join('') || '<div style="color:var(--text3);font-size:12px">Cadastre clientes para ver</div>';
-}
-
 async function loadEstrategia() {
   const c = await api('/api/clientes') || [];
   const ativos = c.filter(x => x.status === 'Ativo').length;
@@ -1084,7 +920,7 @@ async function salvarCliente(id) {
     obs: document.getElementById('m-obs').value.trim(),
   };
   const r = id ? await api('/api/clientes/' + id, 'PUT', body) : await api('/api/clientes', 'POST', body);
-  if (r) { toast('✓ Cliente salvo'); closeModal(); loadClientes(); }
+  if (r) { toast('✓ Cliente salvo'); closeModal(); }
 }
 
 async function salvarOp(id) {
@@ -1156,7 +992,7 @@ function processCSV(input) {
       if (r.inseridos) partes.push(`${r.inseridos} novos`);
       if (r.sem_match) partes.push(`${r.sem_match} sem correspondência`);
       toast(`✓ ${partes.join(' · ') || 'Nenhuma alteração'}`);
-      nav('clientes', document.querySelector('[onclick*=clientes]'));
+      nav('dashboard', document.querySelector('[onclick*=dashboard]'));
     }
     input.value = '';
   };
@@ -1520,8 +1356,13 @@ async function agendarDisparo(tipo) {
     clientes = lista.filter(c => c.whatsapp).map(c => ({ cliente: c.cliente, whatsapp: c.whatsapp, media_recorrencia_dias: c.media_recorrencia_dias, nome_comprador: c.nome_comprador || null }));
   }
 
-  if (!clientes.length) { toast('⚠ Nenhum cliente com WhatsApp disponível'); return; }
-  if (!confirm(`Agendar disparo para ${clientes.length} cliente(s)?\n\nOs disparos serão feitos automaticamente entre 8h e 18h, respeitando o limite diário configurado.`)) return;
+  // Filtra apenas clientes com nome do comprador preenchido
+  const semComprador = clientes.filter(c => !c.nome_comprador);
+  clientes = clientes.filter(c => c.nome_comprador);
+
+  if (!clientes.length) { toast('⚠ Nenhum cliente com nome do comprador disponível para disparo'); return; }
+  const avisoSem = semComprador.length ? `\n\n⚠ ${semComprador.length} cliente(s) sem nome do comprador serão ignorados.` : '';
+  if (!confirm(`Agendar disparo para ${clientes.length} cliente(s)?${avisoSem}\n\nOs disparos serão feitos automaticamente entre 8h e 18h, respeitando o limite diário configurado.`)) return;
 
   toast('📅 Agendando disparos...');
   const r = await api('/api/fila-disparos', 'POST', { clientes, mensagem, segmento: tipo });
