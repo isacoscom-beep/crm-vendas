@@ -298,7 +298,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
     <table class="tbl">
       <thead><tr><th>Serviço</th><th>Função</th><th>Status</th><th>Ação</th></tr></thead>
       <tbody>
-        <tr><td><strong>💬 Z-API / WhatsApp</strong></td><td>Bot de rotas + mensagens automáticas</td><td><span class="badge bg">✓ Conectado</span></td><td style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><button class="btn" onclick="testarWA()">Testar</button><input type="text" id="expedicao-numero" placeholder="Nº expedição (5519...)" class="btn" style="font-size:11px;width:160px"><button class="btn primary" onclick="salvarExpedicao()">Salvar nº</button></td></tr>
+        <tr><td><strong>💬 Z-API / WhatsApp</strong></td><td>Bot de rotas + mensagens automáticas</td><td><span class="badge" id="zapi-status">⏳ Verificando</span></td><td style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><button class="btn" onclick="testarWA()">Testar</button><input type="text" id="expedicao-numero" placeholder="Nº expedição (5519...)" class="btn" style="font-size:11px;width:160px"><button class="btn primary" onclick="salvarExpedicao()">Salvar nº</button></td></tr>
         <tr><td><strong>🔧 Normalizar Canais</strong></td><td>Converte pedidos "Site" e "Bling" para WhatsApp no banco</td><td><span class="badge ba">⚙️ Manutenção</span></td><td><button class="btn primary" onclick="normalizarCanais()">▶ Executar</button></td></tr>
         <tr><td><strong>🔄 Corrigir Status Bling</strong></td><td>Revalida o status de pedidos "Atendido" diretamente no Bling e corrige inconsistências</td><td><span class="badge ba">⚙️ Manutenção</span></td><td><button class="btn primary" onclick="corrigirStatusBling()">▶ Executar</button></td></tr>
         <tr><td><strong>🗄️ Supabase</strong></td><td>Banco de dados — salva tudo</td><td><span class="badge" id="st-supabase">⏳ Verificando</span></td><td>—</td></tr>
@@ -1023,8 +1023,23 @@ async function normalizarCanais() {
 }
 
 async function loadIntegracoes() {
-  const cfg = await api('/api/config/expedicao');
+  const [cfg, status] = await Promise.all([
+    api('/api/config/expedicao'),
+    api('/api/whatsapp/status'),
+  ]);
   if (cfg?.numero) document.getElementById('expedicao-numero').value = cfg.numero;
+
+  const badge = document.getElementById('zapi-status');
+  if (status?.conectado && status?.celular) {
+    badge.className = 'badge bg';
+    badge.textContent = '✓ Conectado';
+  } else if (status?.conectado && !status?.celular) {
+    badge.className = 'badge ba';
+    badge.textContent = '⚠ Celular desconectado';
+  } else {
+    badge.className = 'badge bgr';
+    badge.textContent = '✗ Desconectado';
+  }
 }
 
 async function salvarExpedicao() {

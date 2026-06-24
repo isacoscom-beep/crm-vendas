@@ -1168,6 +1168,22 @@ app.post('/api/importar-clientes', async (req, res) => {
 });
 
 // ============================================================
+// ============================================================
+// STATUS WHATSAPP — Consulta Z-API em tempo real
+// ============================================================
+app.get('/api/whatsapp/status', async (req, res) => {
+  try {
+    const response = await axios.get(`${ZAPI.base}/status`);
+    const d = response.data;
+    const conectado = d.connected === true || d.value === 'CONNECTED';
+    const celular = d.smartphoneConnected !== false;
+    res.json({ conectado, celular, raw: d });
+  } catch (err) {
+    res.json({ conectado: false, celular: false, erro: err.message });
+  }
+});
+
+// ============================================================
 // DISPARAR MENSAGEM MANUAL POR CIDADE
 // ============================================================
 app.post('/api/disparar', async (req, res) => {
